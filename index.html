@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Faculty Research Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      background: radial-gradient(circle at top, #0f172a, #020617);
+    }
+  </style>
+
+</head>
+
+<body class="text-white min-h-screen flex flex-col">
+
+  <!-- NAVBAR -->
+
+  <header class="border-b border-slate-800 bg-slate-950/60 backdrop-blur">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+      <h1 class="text-xl font-semibold tracking-wide text-blue-400">
+        Faculty Research Portal
+      </h1>
+      <span class="text-sm text-slate-400">
+        Publication Intelligence System
+      </span>
+    </div>
+  </header>
+
+  <!-- HERO -->
+
+  <main class="flex-1 flex items-center justify-center px-6">
+    <div class="text-center max-w-3xl space-y-10">
+
+```
+  <h2 class="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+    Academic Publication Intelligence
+  </h2>
+
+  <p class="text-slate-400 text-lg leading-relaxed">
+    Automated extraction, consolidation, and analytics of faculty research
+    publications from Google Scholar, Scopus, and Web of Science.
+  </p>
+
+  <!-- ACTION BUTTONS -->
+  <div class="flex flex-col sm:flex-row gap-6 justify-center pt-6">
+
+    <!-- SCRAPER DOWNLOAD -->
+    <a
+      href="https://github.com/aniketh25-lmo/FacultyScraper/releases/download/v1.0/FacultyScraper.exe"
+      class="px-8 py-4 rounded-2xl bg-blue-600 hover:bg-blue-500 transition shadow-lg shadow-blue-600/30 text-lg font-semibold"
+    >
+      Download Faculty Scraper v1.0
+    </a>
+
+    <!-- REPORT DOWNLOAD -->
+    <button
+      onclick="downloadPublications()"
+      class="px-8 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 transition shadow-lg shadow-emerald-600/30 text-lg font-semibold"
+    >
+      Download Consolidated Report
+    </button>
+
+  </div>
+
+  <!-- STATUS -->
+  <p id="status" class="text-sm text-slate-500 pt-4"></p>
+
+</div>
+```
+
+  </main>
+
+  <!-- FOOTER -->
+
+  <footer class="border-t border-slate-800 py-4 text-center text-sm text-slate-500">
+    © 2026 Faculty Research Analytics System
+  </footer>
+
+  <!-- SCRIPT -->
+
+  <script>
+    async function downloadPublications() {
+      const status = document.getElementById("status");
+      status.textContent = "Generating Excel from database...";
+
+      try {
+        const response = await fetch("http://127.0.0.1:8000/export/publications");
+
+        if (!response.ok) {
+          throw new Error("Export failed");
+        }
+
+        const blob = await response.blob();
+
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "publications_master.xlsx";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+
+        status.textContent = "Download started ✔";
+      } catch (err) {
+        console.error(err);
+        status.textContent = "Download failed ❌ (backend not running?)";
+      }
+    }
+  </script>
+
+</body>
+</html>
