@@ -88,27 +88,28 @@
       status.textContent = "Generating Excel from database...";
 
       try {
-        //const response = await fetch("http://127.0.0.1:8000/export/publications");
-        const response = await fetch("https://faculty-portal-backend.onrender.com/export/publications");
-        if (!response.ok) {
-          throw new Error("Export failed");
-        }
+        const response = await fetch(
+          "https://faculty-portal-backend-wxed.onrender.com/export/publications"
+        );
+
+        if (!response.ok) throw new Error("Export failed");
 
         const blob = await response.blob();
-
         const url = window.URL.createObjectURL(blob);
+
         const a = document.createElement("a");
         a.href = url;
         a.download = "publications_master.xlsx";
         document.body.appendChild(a);
         a.click();
         a.remove();
+
         window.URL.revokeObjectURL(url);
 
         status.textContent = "Download started ✔";
       } catch (err) {
         console.error(err);
-        status.textContent = "Download failed ❌ (backend not running?)";
+        status.textContent = "Download failed ❌ (backend waking up?)";
       }
     }
   </script>
