@@ -1,0 +1,76 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+/* ── THEME TOKENS ─────────────────────────────────── */
+[data-theme="light"] {
+  --color-bg:          #EBF4DD;
+  --color-card:        #F7FBF2;
+  --color-sidebar:     #E2EDD5;
+  --color-border:      #90AB8B;
+  --color-accent:      #5A7863;
+  --color-accent-muted:#5A786322;
+  --color-text:        #3B4953;
+  --color-text-muted:  #6B7F74;
+  --color-header-bg:   rgba(235,244,221,0.85);
+}
+
+[data-theme="dark"] {
+  --color-bg:          #02040a;
+  --color-card:        #0f172a;
+  --color-sidebar:     #070c1a;
+  --color-border:      #1e293b;
+  --color-accent:      #6366f1;
+  --color-accent-muted:#6366f122;
+  --color-text:        #f8fafc;
+  --color-text-muted:  #94a3b8;
+  --color-header-bg:   rgba(2,4,10,0.85);
+}
+
+/* ── RESET ───────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; overflow: hidden; }
+body {
+  font-family: 'Inter', 'Segoe UI Variable Display', system-ui, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── SCROLLBAR ───────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-accent); }
+
+/* ── ANIMATIONS ──────────────────────────────────── */
+@keyframes sparkle-pulse {
+  0%,100% { filter: brightness(1); }
+  50%     { filter: brightness(1.4) drop-shadow(0 0 6px currentColor); }
+}
+@keyframes dot-pulse {
+  0%,100% { transform: scale(1); opacity: 1; }
+  50%     { transform: scale(1.5); opacity: 0.6; }
+}
+@keyframes blink {
+  0%,100% { opacity: 1; }
+  50%     { opacity: 0; }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes progress-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.sparkle-animate  { animation: sparkle-pulse 2.5s ease-in-out infinite; }
+.dot-pulse        { animation: dot-pulse 1.5s ease-in-out infinite; }
+.cursor-blink     { animation: blink 1s step-end infinite; }
+.slide-up         { animation: slide-up 0.35s ease forwards; }
+.modal-in         { animation: modal-in 0.25s ease forwards; }
