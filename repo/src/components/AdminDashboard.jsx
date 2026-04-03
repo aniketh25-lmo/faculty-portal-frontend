@@ -21,17 +21,41 @@ export default function AdminDashboard({ profile }) {
   const [analytics, setAnalytics] = useState(null)
   const [analyticsLoading, setAnalyticsLoading] = useState(true)
 
+  const [globalAuthors, setGlobalAuthors] = useState([])
+  const [globalPubs, setGlobalPubs] = useState([])
+  const [advancedAnalyticsLoading, setAdvancedAnalyticsLoading] = useState(true)
+
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
 
   useEffect(() => {
     fetchClaims()
     fetchSystemAnalytics()
+    fetchAdvancedGlobalData()
+
+    // Real-time synchronization for Admin Identity Claims
+    const channel = supabase.channel('admin-claims-channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profile_claims' },
+        (payload) => {
+          // Instead of manually juggling the state array for inserts/updates/deletes, 
+          // simply ping the fetcher to re-sync. This guarantees we get the joined relational data 
+          // (like email and canonical_name) which the raw payload lacks.
+          fetchClaims()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   async function fetchClaims() {
-    setClaimsLoading(true)
-    const { data } = await supabase
+    // Don't set loading to true if we are just background-refreshing, 
+    // this prevents the screen from flashing.
+    const { data, error } = await supabase
       .from('profile_claims')
       .select(`
         id, created_at, status,
@@ -40,6 +64,12 @@ export default function AdminDashboard({ profile }) {
       `)
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
+    
+    if (error) {
+      console.error("Admin fetchClaims Error:", error)
+    } else {
+      console.log(`Admin fetchClaims: Retrieved ${data?.length || 0} pending claims.`)
+    }
     
     setClaims(data || [])
     setClaimsLoading(false)
@@ -52,6 +82,19 @@ export default function AdminDashboard({ profile }) {
       setAnalytics(data)
     }
     setAnalyticsLoading(false)
+  }
+
+  async function fetchAdvancedGlobalData() {
+    setAdvancedAnalyticsLoading(true)
+    const [pubRes, authorRes] = await Promise.all([
+      supabase.from('master_publications').select('*'),
+      supabase.from('master_authors').select('*')
+    ])
+    
+    if (pubRes.data) setGlobalPubs(pubRes.data)
+    if (authorRes.data) setGlobalAuthors(authorRes.data)
+    
+    setAdvancedAnalyticsLoading(false)
   }
 
   async function handleApprove(claimId) {
@@ -192,7 +235,7 @@ export default function AdminDashboard({ profile }) {
               </div>
 
               {/* Institutional Charts */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
                 
                 {/* Platform Distribution Pie Chart */}
                 <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem' }}>
@@ -243,6 +286,115 @@ export default function AdminDashboard({ profile }) {
                 </div>
 
               </div>
+
+              {/* ── Advanced Institutional Analytics ── */}
+              {advancedAnalyticsLoading ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Aggregating deeper institutional metrics...</div>
+              ) : (
+                <>
+                  {(() => {
+                    const totalScholarCites = globalAuthors.reduce((acc, a) => acc + (a.scholar_citations || 0), 0)
+                    const totalScopusCites = globalAuthors.reduce((acc, a) => acc + (a.scopus_citations || 0), 0)
+                    const totalWosCites = globalAuthors.reduce((acc, a) => acc + (a.wos_citations || 0), 0)
+
+                    const topFaculty = [...globalAuthors]
+                      .sort((a,b) => ((b.scholar_citations || 0) + (b.scopus_citations || 0) + (b.wos_citations || 0)) - ((a.scholar_citations || 0) + (a.scopus_citations || 0) + (a.wos_citations || 0)))
+                      .slice(0, 5)
+
+                    const topGlobalPapers = [...globalPubs]
+                      .sort((a,b) => ((b.scholar_citations || 0) + (b.scopus_citations || 0) + (b.wos_citations || 0)) - ((a.scholar_citations || 0) + (a.scopus_citations || 0) + (a.wos_citations || 0)))
+                      .slice(0, 5)
+
+                    return (
+                      <>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '1rem', letterSpacing: '-0.02em', borderTop: '1px solid var(--color-border)', paddingTop: '2rem' }}>Global Citation Matrix</h2>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' }}>
+                          <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem', borderTop: '4px solid #3b82f6' }}>
+                            <h3 style={{ fontSize: '1rem', color: '#fff', fontWeight: 600, marginBottom: '1.2rem' }}>Google Scholar</h3>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
+                              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Net Institutional Citations</span>
+                              <span style={{ color: '#fff', fontWeight: 700 }}>{totalScholarCites.toLocaleString()}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Indexed Outputs</span>
+                              <span style={{ color: '#fff', fontWeight: 700 }}>{globalPubs.filter(p => p.in_scholar).length.toLocaleString()}</span>
+                            </div>
+                          </div>
+                          <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem', borderTop: '4px solid #f97316' }}>
+                            <h3 style={{ fontSize: '1rem', color: '#fff', fontWeight: 600, marginBottom: '1.2rem' }}>Scopus</h3>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
+                              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Net Institutional Citations</span>
+                              <span style={{ color: '#fff', fontWeight: 700 }}>{totalScopusCites.toLocaleString()}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Indexed Outputs</span>
+                              <span style={{ color: '#fff', fontWeight: 700 }}>{globalPubs.filter(p => p.in_scopus).length.toLocaleString()}</span>
+                            </div>
+                          </div>
+                          <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem', borderTop: '4px solid #a855f7' }}>
+                            <h3 style={{ fontSize: '1rem', color: '#fff', fontWeight: 600, marginBottom: '1.2rem' }}>Web of Science</h3>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
+                              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Net Institutional Citations</span>
+                              <span style={{ color: '#fff', fontWeight: 700 }}>{totalWosCites.toLocaleString()}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Indexed Outputs</span>
+                              <span style={{ color: '#fff', fontWeight: 700 }}>{globalPubs.filter(p => p.in_wos).length.toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginTop: '1rem' }}>
+                          
+                          {/* Institutional Top Performers */}
+                          <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem' }}>
+                            <h3 style={{ fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '0.5rem', fontWeight: 600 }}>Elite Faculty Leaderboard</h3>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>Ranked by net aggregated citations across all three indexes.</p>
+                            
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                              {topFaculty.length > 0 ? topFaculty.map((author, idx) => {
+                                const netAuthCites = (author.scholar_citations || 0) + (author.scopus_citations || 0) + (author.wos_citations || 0)
+                                return (
+                                  <div key={author.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.8rem', borderRadius: 8 }}>
+                                    <div>
+                                      <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginRight: '0.8rem', fontWeight: 700 }}>#{idx+1}</span>
+                                      <span style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 600 }}>{author.canonical_name}</span>
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginLeft: '0.5rem' }}>({author.department})</span>
+                                    </div>
+                                    <span style={{ fontSize: '0.75rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '0.2rem 0.6rem', borderRadius: 12, fontWeight: 700 }}>{netAuthCites.toLocaleString()} Cites</span>
+                                  </div>
+                                )
+                              }) : <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>No ranked faculty found.</div>}
+                            </div>
+                          </div>
+
+                          {/* Top Impact Research (Global) */}
+                          <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem' }}>
+                            <h3 style={{ fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '0.5rem', fontWeight: 600 }}>Global Highest Impact Research</h3>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>The most globally cited publications across the entire institution.</p>
+                            
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                              {topGlobalPapers.length > 0 ? topGlobalPapers.map((paper, idx) => {
+                                const netCitations = (paper.scholar_citations || 0) + (paper.scopus_citations || 0) + (paper.wos_citations || 0)
+                                return (
+                                  <div key={paper.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.8rem', borderRadius: 8, gap: '1rem' }}>
+                                    <div style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                      <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginRight: '0.5rem', fontWeight: 700 }}>#{idx+1}</span>
+                                      <span style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 500 }} title={paper.title}>{paper.title}</span>
+                                    </div>
+                                    <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700, flexShrink: 0 }}>{netCitations.toLocaleString()} Cites</span>
+                                  </div>
+                                )
+                              }) : <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>No publications available.</div>}
+                            </div>
+                          </div>
+
+                        </div>
+                      </>
+                    )
+                  })()}
+                </>
+              )}
             </>
           )}
         </div>

@@ -16,8 +16,10 @@ function clean(val) {
 }
 
 // ── Maps raw DB publication row → formatted Excel row ──
-function formatPublicationRow(pub) {
-  return {
+function formatPublicationRow(pub, selectedColumns) {
+  const scopusVal = (pub.scopus_citations === null || pub.scopus_citations === undefined || pub.scopus_citations === 0) ? "N/A" : pub.scopus_citations
+  
+  const fullRow = {
     "Title": clean(pub.title),
     "Source / Journal": clean(pub.source_name),
     "Authors": clean(pub.authors_list),
@@ -30,16 +32,26 @@ function formatPublicationRow(pub) {
     "Paper URL": clean(pub.paper_url),
     "Abstract": clean(pub.abstract),
     "Scholar Citations": pub.scholar_citations || 0,
-    "Scopus Citations": pub.scopus_citations || 0,
+    "Scopus Citations": scopusVal,
     "WoS Citations": pub.wos_citations || 0,
     "In Scholar": pub.in_scholar ? "Yes" : "No",
     "In Scopus": pub.in_scopus ? "Yes" : "No",
     "In WoS": pub.in_wos ? "Yes" : "No"
   }
+
+  if (!selectedColumns || selectedColumns.length === 0) return fullRow
+
+  const filteredRow = {}
+  selectedColumns.forEach(col => {
+    if (fullRow[col] !== undefined) filteredRow[col] = fullRow[col]
+  })
+  return filteredRow
 }
 
 // ── Maps raw DB master_authors row → formatted Excel row ──
 function formatAuthorProfileRow(author) {
+  const scopusVal = (author.scopus_citations === null || author.scopus_citations === undefined || author.scopus_citations === 0) ? "N/A" : author.scopus_citations
+  
   return {
     "Faculty Name": clean(author.canonical_name),
     "Department": clean(author.department),
@@ -49,7 +61,7 @@ function formatAuthorProfileRow(author) {
     "Scopus ID": clean(author.scopus_id),
     "WoS Researcher ID": clean(author.wos_id),
     "Scholar Citations": author.scholar_citations || 0,
-    "Scopus Citations": author.scopus_citations || 0,
+    "Scopus Citations": scopusVal,
     "WoS Citations": author.wos_citations || 0,
     "Scholar H-Index": author.scholar_h_index || 0,
     "Scopus H-Index": author.scopus_h_index || 0,
@@ -59,26 +71,16 @@ function formatAuthorProfileRow(author) {
 }
 
 // ── Auto-size columns for publications ──
-function formatPubColumns(ws) {
-  ws['!cols'] = [
-    { wch: 60 },  // Title
-    { wch: 45 },  // Source
-    { wch: 40 },  // Authors
-    { wch: 14 },  // Pub Year
-    { wch: 14 },  // Academic Year
-    { wch: 14 },  // Department
-    { wch: 18 },  // ISSN/ISBN
-    { wch: 22 },  // Vol/Issue/Pages
-    { wch: 28 },  // DOI
-    { wch: 45 },  // Paper URL
-    { wch: 40 },  // Abstract
-    { wch: 16 },  // Scholar Cit
-    { wch: 16 },  // Scopus Cit
-    { wch: 16 },  // WoS Cit
-    { wch: 12 },  // In Scholar
-    { wch: 12 },  // In Scopus
-    { wch: 12 },  // In WoS
-  ]
+const COLUMN_WIDTHS = {
+  "Title": 60, "Source / Journal": 45, "Authors": 40, "Publication Year": 14,
+  "Academic Year": 14, "Department": 14, "ISSN / ISBN": 18, "Volume / Issue / Pages": 22,
+  "DOI": 28, "Paper URL": 45, "Abstract": 40, "Scholar Citations": 16,
+  "Scopus Citations": 16, "WoS Citations": 16, "In Scholar": 12, "In Scopus": 12, "In WoS": 12
+}
+
+function formatPubColumns(ws, selectedColumns) {
+  if (!selectedColumns || selectedColumns.length === 0) return
+  ws['!cols'] = selectedColumns.map(col => ({ wch: COLUMN_WIDTHS[col] || 20 }))
 }
 
 // ── Auto-size columns for author profiles ──
@@ -124,9 +126,15 @@ export function generateExcelReport(reportTitle, authorProfiles, rawPublications
     if (filters.platform === 'Scopus') filteredPubs = filteredPubs.filter(p => p.in_scopus)
     if (filters.platform === 'WoS') filteredPubs = filteredPubs.filter(p => p.in_wos)
   }
+  
+  // Categorical Filtering
+  const processedCats = filteredPubs.map(p => ({ ...p, Category: getStrictType(p.title, p.source_name) }))
+  let processed = processedCats
+  if (filters.category && filters.category !== 'All') {
+    processed = processedCats.filter(p => p.Category === filters.category)
+  }
 
-  // 2. Strict Classification
-  const processed = filteredPubs.map(p => ({ ...p, Category: getStrictType(p.title, p.source_name) }))
+  const selectedColumns = filters.selectedColumns || Object.keys(COLUMN_WIDTHS)
 
   const wb = XLSX.utils.book_new()
   const profiles = authorProfiles || []
@@ -178,21 +186,26 @@ export function generateExcelReport(reportTitle, authorProfiles, rawPublications
   // ═══════════════════════════════════════════════
   // TAB 3: Master Dump (all publications, no category split)
   // ═══════════════════════════════════════════════
-  const masterRows = processed.map(formatPublicationRow)
-  const wsMaster = XLSX.utils.json_to_sheet(masterRows)
-  formatPubColumns(wsMaster)
-  XLSX.utils.book_append_sheet(wb, wsMaster, "All Publications")
+  if (processed.length > 0) {
+    const masterRows = processed.map(p => formatPublicationRow(p, selectedColumns))
+    const wsMaster = XLSX.utils.json_to_sheet(masterRows)
+    formatPubColumns(wsMaster, selectedColumns)
+    XLSX.utils.book_append_sheet(wb, wsMaster, "All Publications")
+  }
 
   // ═══════════════════════════════════════════════
   // TABS 4-7: Category-Specific Sheets
   // ═══════════════════════════════════════════════
   const categories = ["Journal", "Conference", "Book_Chapter", "Unmarked"]
   categories.forEach(cat => {
+    // If a specific category filter was applied, don't generate sheets for the others
+    if (filters.category && filters.category !== 'All' && filters.category !== cat) return
+
     const catRows = processed.filter(p => p.Category === cat)
     if (catRows.length === 0) return
-    const formattedRows = catRows.map(formatPublicationRow)
+    const formattedRows = catRows.map(p => formatPublicationRow(p, selectedColumns))
     const wsCat = XLSX.utils.json_to_sheet(formattedRows)
-    formatPubColumns(wsCat)
+    formatPubColumns(wsCat, selectedColumns)
     XLSX.utils.book_append_sheet(wb, wsCat, cat)
   })
 

@@ -29,20 +29,35 @@ export default function App() {
 
   // Supabase Auth and Profile Listener
   useEffect(() => {
-    async function fetchProfile(userId) {
+    async function fetchProfile(user) {
       try {
-        const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single()
-        if (error) throw error
+        let { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+        
+        // If profile doesn't exist (PGRST116 is the error code for 0 rows on single()), create it
+        if (error && error.code === 'PGRST116') {
+          console.log('Profile missing, auto-creating...')
+          const res = await supabase.from('profiles').insert({
+            id: user.id,
+            email: user.email,
+            role: 'faculty'
+          }).select().single()
+          
+          if (res.error) throw res.error
+          data = res.data
+        } else if (error) {
+          throw error
+        }
+
         setProfile(data || {})
       } catch (err) {
-        console.error('Failed to fetch profile', err)
-        setProfile({}) // Empty fallback to avoid perpetual loading
+        console.error('Failed to fetch/create profile', err)
+        setProfile({}) // Empty fallback
       }
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
-      if (session) fetchProfile(session.user.id)
+      if (session) fetchProfile(session.user)
     })
 
     const {
@@ -50,7 +65,7 @@ export default function App() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       if (session) {
-        fetchProfile(session.user.id)
+        fetchProfile(session.user)
       } else {
         setProfile(null)
       }

@@ -70,6 +70,33 @@ export default function FacultyDashboard({ profile }) {
     )
     .sort((a,b) => (b.publication_year || 0) - (a.publication_year || 0))
 
+  // --- Advanced Calculations ---
+  const topPapers = [...all_publications]
+    .sort((a,b) => ((b.scholar_citations || 0) + (b.scopus_citations || 0) + (b.wos_citations || 0)) - ((a.scholar_citations || 0) + (a.scopus_citations || 0) + (a.wos_citations || 0)))
+    .slice(0, 3)
+
+  const collaboratorCounts = {}
+  all_publications.forEach(pub => {
+    let authors = []
+    if (pub.authors_list && Array.isArray(pub.authors_list)) {
+      authors = pub.authors_list
+    } else if (typeof pub.authors_list === 'string') {
+      authors = pub.authors_list.split(/,|;/)
+    }
+    
+    authors.forEach(author => {
+      const cleaned = author.trim()
+      // Exclude their own canonical name
+      if (cleaned && cleaned.toLowerCase() !== identity.canonical_name.toLowerCase() && cleaned.length > 2) {
+         collaboratorCounts[cleaned] = (collaboratorCounts[cleaned] || 0) + 1
+      }
+    })
+  })
+
+  const topCollaborators = Object.entries(collaboratorCounts)
+    .sort((a,b) => b[1] - a[1])
+    .slice(0, 5)
+
   return (
     <div className="slide-up" style={{ padding: '3rem 2rem', maxWidth: 1100, margin: '0 auto' }}>
       
@@ -83,31 +110,74 @@ export default function FacultyDashboard({ profile }) {
             {identity.department} &bull; {identity.organization}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {rawAuthor?.orcid && <span style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)', padding: '0.25rem 0.6rem', borderRadius: 20, fontSize: '0.7rem', fontWeight: 600 }}>ORCID: {rawAuthor.orcid}</span>}
           {identity.scholar_id && <span style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.2)', padding: '0.25rem 0.6rem', borderRadius: 20, fontSize: '0.7rem', fontWeight: 600 }}>Scholar</span>}
           {identity.scopus_id  && <span style={{ background: 'rgba(249, 115, 22, 0.1)', color: '#fb923c', border: '1px solid rgba(249,115,22,0.2)', padding: '0.25rem 0.6rem', borderRadius: 20, fontSize: '0.7rem', fontWeight: 600 }}>Scopus</span>}
-          {identity.wos_id     && <span style={{ background: 'rgba(168, 85, 247, 0.1)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.2)', padding: '0.25rem 0.6rem', borderRadius: 20, fontSize: '0.7rem', fontWeight: 600 }}>Web of Science</span>}
+          {identity.wos_id     && <span style={{ background: 'rgba(168, 85, 247, 0.1)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.2)', padding: '0.25rem 0.6rem', borderRadius: 20, fontSize: '0.7rem', fontWeight: 600 }}>WoS</span>}
         </div>
       </div>
 
-      {/* ── KPI Grid ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' }}>
-        <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.25rem' }}>
-          <p style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Global Citations</p>
-          <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-text)', lineHeight: 1 }}>{kpis.scholar_citations}</div>
+      {/* ── Advanced Platform Matrix ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' }}>
+        
+        {/* Scholar Matrix */}
+        <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem', borderTop: '4px solid #3b82f6' }}>
+          <h3 style={{ fontSize: '1rem', color: '#fff', fontWeight: 600, marginBottom: '1.2rem', display: 'flex', justifyContent: 'space-between' }}>
+            Google Scholar <span style={{ color: '#3b82f6', fontSize: '0.8rem' }}>{rawAuthor?.scholar_id || 'Not Linked'}</span>
+          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
+            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Citations</span>
+            <span style={{ color: '#fff', fontWeight: 700 }}>{rawAuthor?.scholar_citations || 0}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
+            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>H-Index (i10)</span>
+            <span style={{ color: '#fff', fontWeight: 700 }}>{rawAuthor?.scholar_h_index || 0} <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>({rawAuthor?.scholar_i10_index || 0})</span></span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Total Output</span>
+            <span style={{ color: '#fff', fontWeight: 700 }}>{all_publications.filter(p => p.in_scholar).length}</span>
+          </div>
         </div>
-        <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.25rem' }}>
-          <p style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Scopus Outputs</p>
-          <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-text)', lineHeight: 1 }}>{kpis.scopus_documents}</div>
+
+        {/* Scopus Matrix */}
+        <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem', borderTop: '4px solid #f97316' }}>
+          <h3 style={{ fontSize: '1rem', color: '#fff', fontWeight: 600, marginBottom: '1.2rem', display: 'flex', justifyContent: 'space-between' }}>
+            Scopus <span style={{ color: '#f97316', fontSize: '0.8rem' }}>{rawAuthor?.scopus_id || 'Not Linked'}</span>
+          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
+            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Citations</span>
+            <span style={{ color: '#fff', fontWeight: 700 }}>{rawAuthor?.scopus_citations || 0}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
+            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>H-Index</span>
+            <span style={{ color: '#fff', fontWeight: 700 }}>{rawAuthor?.scopus_h_index || 0}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Total Output</span>
+            <span style={{ color: '#fff', fontWeight: 700 }}>{all_publications.filter(p => p.in_scopus).length}</span>
+          </div>
         </div>
-        <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.25rem' }}>
-          <p style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Peak H-Index</p>
-          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#10b981', lineHeight: 1 }}>{kpis.peak_h_index}</div>
+
+        {/* WoS Matrix */}
+        <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem', borderTop: '4px solid #a855f7' }}>
+          <h3 style={{ fontSize: '1rem', color: '#fff', fontWeight: 600, marginBottom: '1.2rem', display: 'flex', justifyContent: 'space-between' }}>
+            Web of Science <span style={{ color: '#a855f7', fontSize: '0.8rem' }}>{rawAuthor?.wos_id ? 'Linked' : 'Not Linked'}</span>
+          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
+            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Citations</span>
+            <span style={{ color: '#fff', fontWeight: 700 }}>{rawAuthor?.wos_citations || 0}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
+            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>H-Index</span>
+            <span style={{ color: '#fff', fontWeight: 700 }}>{rawAuthor?.wos_h_index || 0}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Total Output</span>
+            <span style={{ color: '#fff', fontWeight: 700 }}>{all_publications.filter(p => p.in_wos).length}</span>
+          </div>
         </div>
-        <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.25rem' }}>
-          <p style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Web of Science</p>
-          <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-text)', lineHeight: 1 }}>{kpis.wos_documents}</div>
-        </div>
+
       </div>
 
       {/* ── Scopus Disclaimer ── */}
@@ -155,6 +225,47 @@ export default function FacultyDashboard({ profile }) {
             )}
           </div>
         </div>
+      </div>
+
+      {/* ── Advanced Insight Panels ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginTop: '2.5rem' }}>
+        
+        {/* Top Collaborators Network */}
+        <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem' }}>
+          <h3 style={{ fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '0.5rem', fontWeight: 600 }}>Frequent Collaborators</h3>
+          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>Researchers commonly co-authoring with {identity.canonical_name}.</p>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+            {topCollaborators.length > 0 ? topCollaborators.map(([name, count], idx) => (
+              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.8rem', borderRadius: 8 }}>
+                <span style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 500 }}>{name}</span>
+                <span style={{ fontSize: '0.75rem', background: 'var(--color-accent)', color: '#fff', padding: '0.2rem 0.6rem', borderRadius: 12, fontWeight: 700 }}>{count} Papers</span>
+              </div>
+            )) : <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>No recurring collaborators found.</div>}
+          </div>
+        </div>
+
+        {/* Top Impact Research */}
+        <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem' }}>
+          <h3 style={{ fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '0.5rem', fontWeight: 600 }}>Highest Impact Research</h3>
+          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>Ranked by aggregate cumulative citations across all platforms.</p>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+            {topPapers.length > 0 ? topPapers.map((paper, idx) => {
+              const netCitations = (paper.scholar_citations || 0) + (paper.scopus_citations || 0) + (paper.wos_citations || 0)
+              return (
+                <div key={paper.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.8rem', borderRadius: 8, gap: '1rem' }}>
+                  <div style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginRight: '0.5rem' }}>#{idx+1}</span>
+                    <span style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 500 }} title={paper.title}>{paper.title}</span>
+                  </div>
+                  <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700, flexShrink: 0 }}>{netCitations} Cites</span>
+                </div>
+              )
+            }) : <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>No publications available.</div>}
+          </div>
+        </div>
+
       </div>
 
       {/* ── Master Publications Table ── */}
