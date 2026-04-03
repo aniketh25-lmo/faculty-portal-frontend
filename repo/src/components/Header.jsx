@@ -22,7 +22,7 @@ export default function Header({ theme, onThemeToggle, onInfoClick, dbStatus, se
     }}>
       {/* Branding */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-        <Link to={session ? '/dashboard' : '/'} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span className="sparkle-animate" style={{ color: 'var(--color-accent)', fontSize: '1.1rem' }}>✧</span>
           <span style={{
             fontFamily: "'Segoe UI Variable Display','Inter',system-ui",

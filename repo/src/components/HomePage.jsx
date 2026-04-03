@@ -3,12 +3,12 @@ import { Link } from 'react-router-dom'
 import { BACKEND_URL, SCRAPER_URL } from '../constants'
 
 const FEATURES = [
-  { icon: '🔍', title: 'Google Scholar Engine',  desc: 'Automated extraction of publications, citations, and h-index data for each faculty member.' },
-  { icon: '📖', title: 'Scopus Integration',      desc: 'API-based retrieval of peer-reviewed papers with DOI, journal ranking, and citation metrics.' },
-  { icon: '🌐', title: 'Web of Science',          desc: 'Cross-referenced indexing for comprehensive publication coverage across global databases.' },
-  { icon: '🔄', title: 'Smart Deduplication',     desc: 'Intelligent normalization pipeline that merges duplicate records across all three sources.' },
-  { icon: '☁️', title: 'Supabase Sync',           desc: 'Pushes consolidated data to the cloud database in real-time for immediate portal access.' },
-  { icon: '📊', title: '7-Stage Pipeline',        desc: 'From faculty input config to Excel export — a fully automated, end-to-end workflow.' },
+  { icon: '🔍', title: 'Google Scholar Engine', desc: 'Automated extraction of publications, citations, and h-index data for each faculty member.' },
+  { icon: '📖', title: 'Scopus Integration', desc: 'API-based retrieval of peer-reviewed papers with DOI, journal ranking, and citation metrics.' },
+  { icon: '🌐', title: 'Web of Science', desc: 'Cross-referenced indexing for comprehensive publication coverage across global databases.' },
+  { icon: '🔄', title: 'Smart Deduplication', desc: 'Intelligent normalization pipeline that merges duplicate records across all three sources.' },
+  { icon: '☁️', title: 'Supabase Sync', desc: 'Pushes consolidated data to the cloud database in real-time for immediate portal access.' },
+  { icon: '📊', title: '7-Stage Pipeline', desc: 'From faculty input config to Excel export — a fully automated, end-to-end workflow.' },
 ]
 
 export default function HomePage({ session, profile }) {
@@ -67,7 +67,7 @@ export default function HomePage({ session, profile }) {
             </p>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.25rem' }}>
               AcademicPulsePro
-              <span style={{ fontSize: '0.72rem', color: 'var(--color-accent)', fontWeight: 400, marginLeft: '0.4rem' }}>v2.0</span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--color-accent)', fontWeight: 400, marginLeft: '0.4rem' }}>v3.0</span>
             </h3>
             <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
               Run the scraper locally to pull publications from all sources and sync them to the cloud database.
@@ -115,12 +115,12 @@ export default function HomePage({ session, profile }) {
               Administration & Dashboards
             </h3>
             <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
-              {!session 
+              {!session
                 ? "Log in to view your consolidated research profile, citation metrics, and departmental statistics."
                 : "Securely authenticated. Enter the active portal to view institutional metrics and your personal dashboard."}
             </p>
           </div>
-          
+
           {!session ? (
             <Link to="/login" style={{
               display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
@@ -137,8 +137,8 @@ export default function HomePage({ session, profile }) {
               Register / Login ➔
             </Link>
           ) : (
-            <Link 
-              to={profile?.role === 'admin' && !profile?.linked_author_id ? "/admin" : "/dashboard"} 
+            <Link
+              to={profile?.role === 'admin' && !profile?.linked_author_id ? "/admin" : "/dashboard"}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
                 padding: '0.6rem 1.1rem', borderRadius: 10,
