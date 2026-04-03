@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import ExportModal from './ExportModal'
@@ -7,7 +8,12 @@ import { generateExcelReport } from '../utils/excel'
 const COLORS = ['#3b82f6', '#f97316', '#a855f7'] // Scholar, Scopus, WoS
 
 export default function AdminDashboard({ profile }) {
-  const [activeTab, setActiveTab] = useState('analytics')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab = searchParams.get('tab') || 'analytics'
+
+  const setActiveTab = (tabValue) => {
+    setSearchParams({ tab: tabValue })
+  }
   
   const [claims, setClaims] = useState([])
   const [claimsLoading, setClaimsLoading] = useState(true)
@@ -266,7 +272,7 @@ export default function AdminDashboard({ profile }) {
                 </tr>
               </thead>
               <tbody>
-                {claims.map((c) => (
+                {(claims || []).map((c) => (
                   <tr key={c.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s' }}>
                     <td style={{ padding: '1rem 1.5rem', fontSize: '0.85rem', color: 'var(--color-text)' }}>
                       {c.profiles?.email}

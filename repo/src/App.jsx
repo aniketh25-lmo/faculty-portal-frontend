@@ -30,8 +30,14 @@ export default function App() {
   // Supabase Auth and Profile Listener
   useEffect(() => {
     async function fetchProfile(userId) {
-      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
-      setProfile(data)
+      try {
+        const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single()
+        if (error) throw error
+        setProfile(data || {})
+      } catch (err) {
+        console.error('Failed to fetch profile', err)
+        setProfile({}) // Empty fallback to avoid perpetual loading
+      }
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -101,7 +107,9 @@ export default function App() {
               path="/admin" 
               element={
                 !session ? <Navigate to="/login" /> : (
-                  profile?.role === 'admin' ? (
+                  profile === null ? (
+                    <div style={{ padding: '3rem', textAlign: 'center' }}>Loading user profile...</div>
+                  ) : profile?.role === 'admin' ? (
                     <AdminDashboard profile={profile} />
                   ) : (
                     <Navigate to="/dashboard" />

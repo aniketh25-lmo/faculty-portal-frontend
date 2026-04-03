@@ -9,14 +9,15 @@ export function useHeartbeat(pollInterval = 30000) {
   const [status, setStatus] = useState('connecting')
 
   const ping = useCallback(async () => {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
     try {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 8000)
       const res = await fetch(`${BACKEND_URL}/`, { signal: controller.signal })
-      clearTimeout(timeout)
       setStatus(res.ok ? 'active' : 'offline')
     } catch {
       setStatus('offline')
+    } finally {
+      clearTimeout(timeout)
     }
   }, [])
 

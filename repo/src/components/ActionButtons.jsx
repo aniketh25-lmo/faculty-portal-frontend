@@ -1,8 +1,6 @@
 import { useState } from 'react'
 
-const BACKEND_URL = 'https://faculty-portal-backend-wxed.onrender.com'
-const SCRAPER_URL =
-  'https://github.com/aniketh25-lmo/FacultyScraper/releases/download/v1.0/FacultyScraper.exe'
+import { BACKEND_URL, SCRAPER_URL } from '../constants'
 
 export default function ActionButtons() {
   const [status, setStatus] = useState('')
@@ -38,7 +36,7 @@ export default function ActionButtons() {
           href={SCRAPER_URL}
           className="px-8 py-4 rounded-2xl bg-blue-600 hover:bg-blue-500 transition shadow-lg shadow-blue-600/30 text-lg font-semibold text-center"
         >
-          Download Faculty Scraper v2.0
+          Download Academic Pulse Pro v3.0
         </a>
 
         <button
