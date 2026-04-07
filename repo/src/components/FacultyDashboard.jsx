@@ -123,58 +123,58 @@ export default function FacultyDashboard({ profile }) {
         
         {/* Scholar Matrix */}
         <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem', borderTop: '4px solid #3b82f6' }}>
-          <h3 style={{ fontSize: '1rem', color: '#fff', fontWeight: 600, marginBottom: '1.2rem', display: 'flex', justifyContent: 'space-between' }}>
+          <h3 style={{ fontSize: '1rem', color: 'var(--color-text)', fontWeight: 600, marginBottom: '1.2rem', display: 'flex', justifyContent: 'space-between' }}>
             Google Scholar <span style={{ color: '#3b82f6', fontSize: '0.8rem' }}>{rawAuthor?.scholar_id || 'Not Linked'}</span>
           </h3>
           <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
             <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Citations</span>
-            <span style={{ color: '#fff', fontWeight: 700 }}>{rawAuthor?.scholar_citations || 0}</span>
+            <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{rawAuthor?.scholar_citations || 0}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
             <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>H-Index (i10)</span>
-            <span style={{ color: '#fff', fontWeight: 700 }}>{rawAuthor?.scholar_h_index || 0} <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>({rawAuthor?.scholar_i10_index || 0})</span></span>
+            <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{rawAuthor?.scholar_h_index || 0} <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>({rawAuthor?.scholar_i10_index || 0})</span></span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Total Output</span>
-            <span style={{ color: '#fff', fontWeight: 700 }}>{all_publications.filter(p => p.in_scholar).length}</span>
+            <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{all_publications.filter(p => p.in_scholar).length}</span>
           </div>
         </div>
 
         {/* Scopus Matrix */}
         <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem', borderTop: '4px solid #f97316' }}>
-          <h3 style={{ fontSize: '1rem', color: '#fff', fontWeight: 600, marginBottom: '1.2rem', display: 'flex', justifyContent: 'space-between' }}>
+          <h3 style={{ fontSize: '1rem', color: 'var(--color-text)', fontWeight: 600, marginBottom: '1.2rem', display: 'flex', justifyContent: 'space-between' }}>
             Scopus <span style={{ color: '#f97316', fontSize: '0.8rem' }}>{rawAuthor?.scopus_id || 'Not Linked'}</span>
           </h3>
           <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
             <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Citations</span>
-            <span style={{ color: '#fff', fontWeight: 700 }}>{rawAuthor?.scopus_citations || 0}</span>
+            <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{rawAuthor?.scopus_citations || 0}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
             <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>H-Index</span>
-            <span style={{ color: '#fff', fontWeight: 700 }}>{rawAuthor?.scopus_h_index || 0}</span>
+            <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{rawAuthor?.scopus_h_index || 0}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Total Output</span>
-            <span style={{ color: '#fff', fontWeight: 700 }}>{all_publications.filter(p => p.in_scopus).length}</span>
+            <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{all_publications.filter(p => p.in_scopus).length}</span>
           </div>
         </div>
 
         {/* WoS Matrix */}
         <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem', borderTop: '4px solid #a855f7' }}>
-          <h3 style={{ fontSize: '1rem', color: '#fff', fontWeight: 600, marginBottom: '1.2rem', display: 'flex', justifyContent: 'space-between' }}>
+          <h3 style={{ fontSize: '1rem', color: 'var(--color-text)', fontWeight: 600, marginBottom: '1.2rem', display: 'flex', justifyContent: 'space-between' }}>
             Web of Science <span style={{ color: '#a855f7', fontSize: '0.8rem' }}>{rawAuthor?.wos_id ? 'Linked' : 'Not Linked'}</span>
           </h3>
           <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
             <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Citations</span>
-            <span style={{ color: '#fff', fontWeight: 700 }}>{rawAuthor?.wos_citations || 0}</span>
+            <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{rawAuthor?.wos_citations || 0}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
             <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>H-Index</span>
-            <span style={{ color: '#fff', fontWeight: 700 }}>{rawAuthor?.wos_h_index || 0}</span>
+            <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{rawAuthor?.wos_h_index || 0}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Total Output</span>
-            <span style={{ color: '#fff', fontWeight: 700 }}>{all_publications.filter(p => p.in_wos).length}</span>
+            <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{all_publications.filter(p => p.in_wos).length}</span>
           </div>
         </div>
 
@@ -195,11 +195,11 @@ export default function FacultyDashboard({ profile }) {
           <div style={{ width: '100%', height: 260 }}>
             <ResponsiveContainer>
               <BarChart data={impact_indexes} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                <XAxis dataKey="platform" stroke="#ffffff40" tick={{ fill: '#ffffff80', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis stroke="#ffffff40" tick={{ fill: '#ffffff80', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: '#1c1c22', border: '1px solid #333', borderRadius: 8, color: '#fff', fontSize: '0.8rem' }} />
-                <Legend wrapperStyle={{ fontSize: '0.8rem', paddingTop: '10px' }} iconType="circle" iconSize={8} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                <XAxis dataKey="platform" stroke="var(--color-border)" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis stroke="var(--color-border)" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip cursor={{ fill: 'rgba(128,128,128,0.05)' }} contentStyle={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 8, color: 'var(--color-text)', fontSize: '0.8rem' }} />
+                <Legend wrapperStyle={{ fontSize: '0.8rem', paddingTop: '10px', color: 'var(--color-text-muted)' }} iconType="circle" iconSize={8} />
                 <Bar dataKey="H-Index" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={24} />
                 <Bar dataKey="i10-Index" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={24} />
               </BarChart>
@@ -213,10 +213,10 @@ export default function FacultyDashboard({ profile }) {
             {publication_history.length > 0 ? (
               <ResponsiveContainer>
                 <LineChart data={publication_history} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                  <XAxis dataKey="year" stroke="#ffffff40" tick={{ fill: '#ffffff80', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis stroke="#ffffff40" tick={{ fill: '#ffffff80', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ background: '#1c1c22', border: '1px solid #333', borderRadius: 8, color: '#fff', fontSize: '0.8rem' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <XAxis dataKey="year" stroke="var(--color-border)" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis stroke="var(--color-border)" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 8, color: 'var(--color-text)', fontSize: '0.8rem' }} />
                   <Line type="monotone" dataKey="papers" name="Total Outputs" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981', strokeWidth: 0 }} activeDot={{ r: 6 }} />
                 </LineChart>
               </ResponsiveContainer>
@@ -237,8 +237,8 @@ export default function FacultyDashboard({ profile }) {
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
             {topCollaborators.length > 0 ? topCollaborators.map(([name, count], idx) => (
-              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.8rem', borderRadius: 8 }}>
-                <span style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 500 }}>{name}</span>
+              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-accent-muted)', padding: '0.8rem', borderRadius: 8 }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--color-text)', fontWeight: 500 }}>{name}</span>
                 <span style={{ fontSize: '0.75rem', background: 'var(--color-accent)', color: '#fff', padding: '0.2rem 0.6rem', borderRadius: 12, fontWeight: 700 }}>{count} Papers</span>
               </div>
             )) : <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>No recurring collaborators found.</div>}
@@ -254,10 +254,10 @@ export default function FacultyDashboard({ profile }) {
             {topPapers.length > 0 ? topPapers.map((paper, idx) => {
               const netCitations = (paper.scholar_citations || 0) + (paper.scopus_citations || 0) + (paper.wos_citations || 0)
               return (
-                <div key={paper.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.8rem', borderRadius: 8, gap: '1rem' }}>
+                <div key={paper.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-accent-muted)', padding: '0.8rem', borderRadius: 8, gap: '1rem' }}>
                   <div style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginRight: '0.5rem' }}>#{idx+1}</span>
-                    <span style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 500 }} title={paper.title}>{paper.title}</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--color-text)', fontWeight: 500 }} title={paper.title}>{paper.title}</span>
                   </div>
                   <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700, flexShrink: 0 }}>{netCitations} Cites</span>
                 </div>
@@ -301,7 +301,7 @@ export default function FacultyDashboard({ profile }) {
         
         <div style={{ overflowX: 'auto', maxHeight: '500px', overflowY: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead style={{ position: 'sticky', top: 0, background: 'rgba(28, 28, 34, 0.95)', backdropFilter: 'blur(8px)', zIndex: 10 }}>
+            <thead style={{ position: 'sticky', top: 0, background: 'var(--color-header-bg)', backdropFilter: 'blur(8px)', zIndex: 10 }}>
               <tr style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 <th style={{ padding: '1rem 1.5rem', width: '60%', borderBottom: '1px solid var(--color-border)' }}>Publication</th>
                 <th style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)' }}>Year</th>

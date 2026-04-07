@@ -258,10 +258,10 @@ export default function AdminDashboard({ profile }) {
                           ))}
                         </Pie>
                         <Tooltip 
-                          contentStyle={{ background: '#1c1c22', border: '1px solid #333', borderRadius: 8, color: '#fff', fontSize: '0.8rem' }} 
-                          itemStyle={{ color: '#fff' }}
+                          contentStyle={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 8, color: 'var(--color-text)', fontSize: '0.8rem' }} 
+                          itemStyle={{ color: 'var(--color-text)' }}
                         />
-                        <Legend wrapperStyle={{ fontSize: '0.8rem' }} />
+                        <Legend wrapperStyle={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -273,11 +273,11 @@ export default function AdminDashboard({ profile }) {
                   <div style={{ width: '100%', height: 300 }}>
                     <ResponsiveContainer>
                       <LineChart data={analytics.yearly_velocity} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                        <XAxis dataKey="year" stroke="#ffffff40" tick={{ fill: '#ffffff80', fontSize: 11 }} axisLine={false} tickLine={false} />
-                        <YAxis stroke="#ffffff40" tick={{ fill: '#ffffff80', fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                        <XAxis dataKey="year" stroke="var(--color-border)" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <YAxis stroke="var(--color-border)" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
                         <Tooltip 
-                          contentStyle={{ background: '#1c1c22', border: '1px solid #333', borderRadius: 8, color: '#fff', fontSize: '0.8rem' }} 
+                          contentStyle={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 8, color: 'var(--color-text)', fontSize: '0.8rem' }} 
                         />
                         <Line type="monotone" dataKey="papers" name="Papers Published" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 4, fill: '#8b5cf6', strokeWidth: 0 }} activeDot={{ r: 6 }} />
                       </LineChart>
@@ -310,36 +310,36 @@ export default function AdminDashboard({ profile }) {
                         <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '1rem', letterSpacing: '-0.02em', borderTop: '1px solid var(--color-border)', paddingTop: '2rem' }}>Global Citation Matrix</h2>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' }}>
                           <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem', borderTop: '4px solid #3b82f6' }}>
-                            <h3 style={{ fontSize: '1rem', color: '#fff', fontWeight: 600, marginBottom: '1.2rem' }}>Google Scholar</h3>
+                            <h3 style={{ fontSize: '1rem', color: 'var(--color-text)', fontWeight: 600, marginBottom: '1.2rem' }}>Google Scholar</h3>
                             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
                               <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Net Institutional Citations</span>
-                              <span style={{ color: '#fff', fontWeight: 700 }}>{totalScholarCites.toLocaleString()}</span>
+                              <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{totalScholarCites.toLocaleString()}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Indexed Outputs</span>
-                              <span style={{ color: '#fff', fontWeight: 700 }}>{globalPubs.filter(p => p.in_scholar).length.toLocaleString()}</span>
+                              <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{globalPubs.filter(p => p.in_scholar).length.toLocaleString()}</span>
                             </div>
                           </div>
                           <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem', borderTop: '4px solid #f97316' }}>
-                            <h3 style={{ fontSize: '1rem', color: '#fff', fontWeight: 600, marginBottom: '1.2rem' }}>Scopus</h3>
+                            <h3 style={{ fontSize: '1rem', color: 'var(--color-text)', fontWeight: 600, marginBottom: '1.2rem' }}>Scopus</h3>
                             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
                               <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Net Institutional Citations</span>
-                              <span style={{ color: '#fff', fontWeight: 700 }}>{totalScopusCites.toLocaleString()}</span>
+                              <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{totalScopusCites.toLocaleString()}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Indexed Outputs</span>
-                              <span style={{ color: '#fff', fontWeight: 700 }}>{globalPubs.filter(p => p.in_scopus).length.toLocaleString()}</span>
+                              <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{globalPubs.filter(p => p.in_scopus).length.toLocaleString()}</span>
                             </div>
                           </div>
                           <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem', borderTop: '4px solid #a855f7' }}>
-                            <h3 style={{ fontSize: '1rem', color: '#fff', fontWeight: 600, marginBottom: '1.2rem' }}>Web of Science</h3>
+                            <h3 style={{ fontSize: '1rem', color: 'var(--color-text)', fontWeight: 600, marginBottom: '1.2rem' }}>Web of Science</h3>
                             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
                               <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Net Institutional Citations</span>
-                              <span style={{ color: '#fff', fontWeight: 700 }}>{totalWosCites.toLocaleString()}</span>
+                              <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{totalWosCites.toLocaleString()}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Indexed Outputs</span>
-                              <span style={{ color: '#fff', fontWeight: 700 }}>{globalPubs.filter(p => p.in_wos).length.toLocaleString()}</span>
+                              <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{globalPubs.filter(p => p.in_wos).length.toLocaleString()}</span>
                             </div>
                           </div>
                         </div>
@@ -355,10 +355,10 @@ export default function AdminDashboard({ profile }) {
                               {topFaculty.length > 0 ? topFaculty.map((author, idx) => {
                                 const netAuthCites = (author.scholar_citations || 0) + (author.scopus_citations || 0) + (author.wos_citations || 0)
                                 return (
-                                  <div key={author.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.8rem', borderRadius: 8 }}>
+                                  <div key={author.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-accent-muted)', padding: '0.8rem', borderRadius: 8 }}>
                                     <div>
                                       <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginRight: '0.8rem', fontWeight: 700 }}>#{idx+1}</span>
-                                      <span style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 600 }}>{author.canonical_name}</span>
+                                      <span style={{ fontSize: '0.85rem', color: 'var(--color-text)', fontWeight: 600 }}>{author.canonical_name}</span>
                                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginLeft: '0.5rem' }}>({author.department})</span>
                                     </div>
                                     <span style={{ fontSize: '0.75rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '0.2rem 0.6rem', borderRadius: 12, fontWeight: 700 }}>{netAuthCites.toLocaleString()} Cites</span>
@@ -377,10 +377,10 @@ export default function AdminDashboard({ profile }) {
                               {topGlobalPapers.length > 0 ? topGlobalPapers.map((paper, idx) => {
                                 const netCitations = (paper.scholar_citations || 0) + (paper.scopus_citations || 0) + (paper.wos_citations || 0)
                                 return (
-                                  <div key={paper.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.8rem', borderRadius: 8, gap: '1rem' }}>
+                                  <div key={paper.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-accent-muted)', padding: '0.8rem', borderRadius: 8, gap: '1rem' }}>
                                     <div style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                       <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginRight: '0.5rem', fontWeight: 700 }}>#{idx+1}</span>
-                                      <span style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 500 }} title={paper.title}>{paper.title}</span>
+                                      <span style={{ fontSize: '0.85rem', color: 'var(--color-text)', fontWeight: 500 }} title={paper.title}>{paper.title}</span>
                                     </div>
                                     <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700, flexShrink: 0 }}>{netCitations.toLocaleString()} Cites</span>
                                   </div>
