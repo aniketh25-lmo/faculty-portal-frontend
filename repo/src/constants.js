@@ -1,5 +1,5 @@
 export const BACKEND_URL = 'https://faculty-portal-backend-wxed.onrender.com'
-export const SCRAPER_URL = 'https://github.com/aniketh25-lmo/FacultyScraper/releases/download/v3.0/AcademicPulsePro.exe'
+export const SCRAPER_URL = 'https://github.com/aniketh25-lmo/FacultyScraper/releases/download/v4.0/AcademicPulsePro.exe'
 export const APP_NAME = 'Academic Pulse Pro'
 export const APP_VERSION = 'v4.0'
 export const PROJECT_LABEL = 'VNR VJIET Major Project'
