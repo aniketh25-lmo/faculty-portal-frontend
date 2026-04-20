@@ -64,34 +64,87 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
   }, [activeTab])
 
   async function fetchClaims() {
-    const { data, error } = await supabase
+    const { data: claimsData, error: claimsError } = await supabase
       .from('profile_claims')
       .select(`
-        id, created_at, status,
-        profiles ( email ),
-        master_authors ( canonical_name, department )
+        id, created_at, status, master_author_id,
+        profiles ( email )
       `)
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
     
-    if (error) console.error("Admin fetchClaims Error:", error)
-    setClaims(data || [])
+    if (claimsError) {
+      console.error("Admin fetchClaims Error:", claimsError)
+      setClaims([])
+      setClaimsLoading(false)
+      return
+    }
+
+    const authorIds = (claimsData || []).map(c => c.master_author_id).filter(Boolean)
+    let authorsMap = {}
+    
+    if (authorIds.length > 0) {
+      const { data: authorsData } = await supabase
+        .from('master_authors')
+        .select('id, canonical_name, department')
+        .in('id', authorIds)
+        
+      if (authorsData) {
+        authorsData.forEach(a => authorsMap[a.id] = a)
+      }
+    }
+
+    const formattedClaims = (claimsData || []).map(c => ({
+      ...c,
+      master_authors: authorsMap[c.master_author_id] || null
+    }))
+
+    setClaims(formattedClaims)
     setClaimsLoading(false)
   }
 
   async function fetchConnections() {
     setConnectionsLoading(true)
-    const { data, error } = await supabase
-      .from('profiles')
+    
+    // Fetch only approved claims from profile_claims table
+    const { data: claimsData, error: claimsError } = await supabase
+      .from('profile_claims')
       .select(`
-        id, email, created_at, linked_author_id,
-        master_authors ( canonical_name, department, scholar_id, scopus_id, wos_id )
+        id, created_at, master_author_id,
+        profiles ( email )
       `)
-      .not('linked_author_id', 'is', null)
+      .eq('status', 'approved')
       .order('created_at', { ascending: false })
 
-    if (error) console.error("fetchConnections Error:", error)
-    setConnections(data || [])
+    if (claimsError) {
+      console.error("fetchConnections Error:", claimsError)
+      setConnections([])
+      setConnectionsLoading(false)
+      return
+    }
+
+    const authorIds = (claimsData || []).map(c => c.master_author_id).filter(Boolean)
+    let authorsMap = {}
+    
+    if (authorIds.length > 0) {
+      const { data: authorsData } = await supabase
+        .from('master_authors')
+        .select('id, canonical_name, department, scholar_id, scopus_id, wos_id')
+        .in('id', authorIds)
+        
+      if (authorsData) {
+        authorsData.forEach(a => authorsMap[a.id] = a)
+      }
+    }
+
+    const formattedConnections = (claimsData || []).map(c => ({
+      id: c.id,
+      email: c.profiles?.email || 'Unknown Email',
+      created_at: c.created_at,
+      master_authors: authorsMap[c.master_author_id] || null
+    }))
+
+    setConnections(formattedConnections)
     setConnectionsLoading(false)
   }
 
@@ -125,6 +178,17 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
     const { error } = await supabase.rpc('reject_claim', { target_claim_id: claimId })
     if (error) alert(`Error: ${error.message}`)
     else setClaims(c => c.filter(x => x.id !== claimId))
+  }
+
+  async function handleApproveDetach(claimId) {
+    if (!confirm('Approve detachment? The user will be permanently unlinked from this author profile.')) return
+    const { error } = await supabase.rpc('approve_detach_claim', { target_claim_id: claimId })
+    if (error) {
+      alert(`Error: RPC 'approve_detach_claim' failed or is missing. Please run the migration script. Details: ${error.message}`)
+    } else {
+      setClaims(c => c.filter(x => x.id !== claimId))
+      fetchConnections()
+    }
   }
 
   async function handleGlobalExport(filters) {
@@ -412,6 +476,7 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: 'rgba(28, 28, 34, 0.95)', color: 'var(--color-text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <th style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)' }}>Type</th>
                   <th style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)' }}>Applicant Email</th>
                   <th style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)' }}>Claimed Identity</th>
                   <th style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)' }}>Department</th>
@@ -421,12 +486,25 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
               <tbody>
                 {(claims || []).map((c) => (
                   <tr key={c.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                    <td style={{ padding: '1rem 1.5rem' }}>
+                      {c.status === 'detach_pending' ? (
+                        <span style={{ background: 'rgba(249,115,22,0.1)', color: '#fb923c', padding: '0.2rem 0.5rem', borderRadius: 4, fontSize: '0.65rem', fontWeight: 700 }}>DETACH</span>
+                      ) : (
+                        <span style={{ background: 'rgba(59,130,246,0.1)', color: '#60a5fa', padding: '0.2rem 0.5rem', borderRadius: 4, fontSize: '0.65rem', fontWeight: 700 }}>LINK</span>
+                      )}
+                    </td>
                     <td style={{ padding: '1rem 1.5rem', fontSize: '0.85rem', color: 'var(--color-text)' }}>{c.profiles?.email}</td>
-                    <td style={{ padding: '1rem 1.5rem', fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text)' }}>{c.master_authors?.canonical_name}</td>
-                    <td style={{ padding: '1rem 1.5rem', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{c.master_authors?.department}</td>
+                    <td style={{ padding: '1rem 1.5rem', fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text)' }}>{c.master_authors?.canonical_name || '—'}</td>
+                    <td style={{ padding: '1rem 1.5rem', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{c.master_authors?.department || '—'}</td>
                     <td style={{ padding: '1rem 1.5rem', textAlign: 'right', display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
-                      <button onClick={() => handleApprove(c.id)} style={{ background: '#10b981', color: '#fff', border: 'none', padding: '0.35rem 0.6rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Approve</button>
-                      <button onClick={() => handleReject(c.id)} style={{ background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', padding: '0.35rem 0.6rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Reject</button>
+                      {c.status === 'detach_pending' ? (
+                        <button onClick={() => handleApproveDetach(c.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '0.35rem 0.6rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Approve Detach</button>
+                      ) : (
+                        <>
+                          <button onClick={() => handleApprove(c.id)} style={{ background: '#10b981', color: '#fff', border: 'none', padding: '0.35rem 0.6rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Approve</button>
+                          <button onClick={() => handleReject(c.id)} style={{ background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', padding: '0.35rem 0.6rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Reject</button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -506,40 +584,37 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
         <div>
           <div style={{ marginBottom: '1.5rem' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.3rem' }}>View Faculty Dashboards</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Select any linked faculty account to preview their dashboard as they see it.</p>
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Select any faculty from the master database to preview their research analytics dashboard.</p>
           </div>
 
-          {connectionsLoading ? (
+          {advancedAnalyticsLoading ? (
             <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading faculty list...</div>
-          ) : connections.length === 0 ? (
+          ) : globalAuthors.length === 0 ? (
             <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--color-text-muted)', background: 'var(--color-card)', borderRadius: 12, border: '1px solid var(--color-border)' }}>
-              No linked faculty accounts available.
+              No faculty records found in database.
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
-              {connections.map((conn) => (
-                <div key={conn.id} style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', transition: 'all 0.2s' }}
+              {globalAuthors.map((author) => (
+                <div key={author.id} style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', transition: 'all 0.2s' }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-accent)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(139,92,246,0.1)' }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.boxShadow = 'none' }}
                 >
                   <div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.2rem' }}>
-                      {conn.master_authors?.canonical_name || conn.email}
+                      {author.canonical_name}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                      {conn.master_authors?.department || 'Unknown Department'}
-                    </div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '0.2rem', opacity: 0.7 }}>
-                      {conn.email}
+                      {author.department || 'Unknown Department'}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '0.3rem' }}>
-                    {conn.master_authors?.scholar_id && <span style={{ background: 'rgba(59,130,246,0.1)', color: '#60a5fa', padding: '0.15rem 0.4rem', borderRadius: 4, fontSize: '0.65rem', fontWeight: 700 }}>GS</span>}
-                    {conn.master_authors?.scopus_id  && <span style={{ background: 'rgba(249,115,22,0.1)', color: '#fb923c', padding: '0.15rem 0.4rem', borderRadius: 4, fontSize: '0.65rem', fontWeight: 700 }}>Scopus</span>}
-                    {conn.master_authors?.wos_id     && <span style={{ background: 'rgba(168,85,247,0.1)', color: '#c084fc', padding: '0.15rem 0.4rem', borderRadius: 4, fontSize: '0.65rem', fontWeight: 700 }}>WoS</span>}
+                    {author.scholar_id && <span style={{ background: 'rgba(59,130,246,0.1)', color: '#60a5fa', padding: '0.15rem 0.4rem', borderRadius: 4, fontSize: '0.65rem', fontWeight: 700 }}>GS</span>}
+                    {author.scopus_id  && <span style={{ background: 'rgba(249,115,22,0.1)', color: '#fb923c', padding: '0.15rem 0.4rem', borderRadius: 4, fontSize: '0.65rem', fontWeight: 700 }}>Scopus</span>}
+                    {author.wos_id     && <span style={{ background: 'rgba(168,85,247,0.1)', color: '#c084fc', padding: '0.15rem 0.4rem', borderRadius: 4, fontSize: '0.65rem', fontWeight: 700 }}>WoS</span>}
                   </div>
                   <button
-                    onClick={() => setImpersonatedProfile({ ...conn, role: 'faculty' })}
+                    onClick={() => setImpersonatedProfile({ email: 'Impersonating: ' + author.canonical_name, role: 'faculty', linked_author_id: author.id, master_authors: author })}
                     style={{ background: 'var(--color-accent)', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: 8, fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', transition: 'opacity 0.2s' }}
                     onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
                     onMouseLeave={e => e.currentTarget.style.opacity = '1'}

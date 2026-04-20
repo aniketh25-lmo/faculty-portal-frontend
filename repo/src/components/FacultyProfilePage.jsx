@@ -47,6 +47,9 @@ export default function FacultyProfilePage({ profile, session }) {
   const [saving, setSaving] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [saveMsg, setSaveMsg] = useState(null)
+  
+  const [activeClaim, setActiveClaim] = useState(null)
+  const [detachLoading, setDetachLoading] = useState(false)
 
   useEffect(() => {
     fetchProfileData()
@@ -67,10 +70,18 @@ export default function FacultyProfilePage({ profile, session }) {
       .select('*')
       .eq('profile_id', profile.id)
       .maybeSingle()
+      
+    const claimPromise = supabase
+      .from('profile_claims')
+      .select('*')
+      .eq('profile_id', profile.id)
+      .in('status', ['approved', 'detach_pending'])
+      .maybeSingle()
 
-    const [authorRes, detailsRes] = await Promise.all([authorPromise, detailsPromise])
+    const [authorRes, detailsRes, claimRes] = await Promise.all([authorPromise, detailsPromise, claimPromise])
 
     if (authorRes.data) setAuthorData(authorRes.data)
+    if (claimRes.data) setActiveClaim(claimRes.data)
 
     const d = detailsRes.data || {}
     setDetails(d)
@@ -121,6 +132,25 @@ export default function FacultyProfilePage({ profile, session }) {
     setDetails(originalDetails)
     setIsEditing(false)
     setSaveMsg(null)
+  }
+
+  async function handleRequestDetach() {
+    if (!activeClaim) return
+    if (!confirm("Are you sure you want to request to detach from this author identity? An admin must approve this. You will lose access to the analytics dashboard until you claim a new identity.")) return
+    
+    setDetachLoading(true)
+    const { error } = await supabase
+      .from('profile_claims')
+      .update({ status: 'detach_pending' })
+      .eq('id', activeClaim.id)
+      
+    if (error) {
+      alert("Error requesting detachment: " + error.message)
+    } else {
+      setActiveClaim(prev => ({ ...prev, status: 'detach_pending' }))
+      setSaveMsg({ type: 'success', text: 'Detachment request sent to administrators.' })
+    }
+    setDetachLoading(false)
   }
 
   if (loading) {
@@ -230,6 +260,26 @@ export default function FacultyProfilePage({ profile, session }) {
           <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '1rem', opacity: 0.65 }}>
             ⚙ This section is automatically populated from the scraper data and cannot be edited here.
           </p>
+          
+          {/* DETACHMENT LOGIC */}
+          <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Incorrect identity linked?</span>
+            {activeClaim?.status === 'detach_pending' ? (
+              <span style={{ fontSize: '0.8rem', color: '#fb923c', fontWeight: 600, background: 'rgba(249,115,22,0.1)', padding: '0.3rem 0.6rem', borderRadius: 6 }}>
+                ⏳ Detachment Request Pending
+              </span>
+            ) : (
+              <button 
+                onClick={handleRequestDetach}
+                disabled={detachLoading}
+                style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '0.45rem 1rem', borderRadius: 8, fontSize: '0.75rem', fontWeight: 600, cursor: detachLoading ? 'wait' : 'pointer', transition: 'all 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+              >
+                {detachLoading ? 'Requesting...' : 'Request Detachment'}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
