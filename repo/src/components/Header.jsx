@@ -5,7 +5,7 @@ import { useState } from 'react'
 const DOT_COLOR = { active: '#10b981', connecting: '#f59e0b', offline: '#ef4444' }
 const DOT_LABEL = { active: 'DB ACTIVE', connecting: 'CONNECTING', offline: 'DB OFFLINE' }
 
-export default function Header({ theme, onThemeToggle, onInfoClick, dbStatus, session, profile, onLogout }) {
+export default function Header({ theme, onThemeToggle, onInfoClick, dbStatus, session, profile, isSuperadmin, onLogout }) {
   const location = useLocation()
   const [showTooltip, setShowTooltip] = useState(false)
   return (
@@ -118,6 +118,18 @@ export default function Header({ theme, onThemeToggle, onInfoClick, dbStatus, se
                   onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-text-muted)'; e.currentTarget.style.background = 'transparent' }}
                 >
                   My Analytics
+                </Link>
+              )}
+
+              {profile?.linked_author_id && (
+                <Link to="/profile" style={{
+                  fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textDecoration: 'none',
+                  padding: '0.35rem 0.6rem', borderRadius: 8, transition: 'all 0.2s', border: '1px solid transparent'
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-text)'; e.currentTarget.style.background = 'var(--color-card)' }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-text-muted)'; e.currentTarget.style.background = 'transparent' }}
+                >
+                  My Profile
                 </Link>
               )}
 

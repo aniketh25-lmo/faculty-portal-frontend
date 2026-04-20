@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 
 import SplashScreen from './components/SplashScreen'
@@ -10,9 +10,12 @@ import Login from './components/Login'
 import ClaimProfile from './components/ClaimProfile'
 import AdminDashboard from './components/AdminDashboard'
 import FacultyDashboard from './components/FacultyDashboard'
+import FacultyProfilePage from './components/FacultyProfilePage'
 
 import { useHeartbeat } from './hooks/useHeartbeat'
 import './App.css'
+
+const SUPERADMIN_EMAIL = '22071A05C2@vnrvjiet.in'
 
 export default function App() {
   const [theme,         setTheme]         = useState('dark')
@@ -20,6 +23,8 @@ export default function App() {
   const [showInfoModal, setShowInfoModal] = useState(false)
   const [session,       setSession]       = useState(null)
   const [profile,       setProfile]       = useState(null)
+
+  const isSuperadmin = profile?.email?.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()
   
   const dbStatus = useHeartbeat(30000)
 
@@ -88,6 +93,7 @@ export default function App() {
           dbStatus={dbStatus}
           session={session}
           profile={profile}
+          isSuperadmin={isSuperadmin}
           onLogout={() => supabase.auth.signOut()}
         />
         <main style={{ flex: 1, overflowY: 'auto', background: 'var(--color-bg)' }}>
@@ -125,9 +131,23 @@ export default function App() {
                   profile === null ? (
                     <div style={{ padding: '3rem', textAlign: 'center' }}>Loading user profile...</div>
                   ) : profile?.role === 'admin' ? (
-                    <AdminDashboard profile={profile} />
+                    <AdminDashboard profile={profile} isSuperadmin={isSuperadmin} />
                   ) : (
                     <Navigate to="/dashboard" />
+                  )
+                )
+              } 
+            />
+
+            {/* Faculty Profile/Details Route */}
+            <Route 
+              path="/profile" 
+              element={
+                !session ? <Navigate to="/login" /> : (
+                  profile === null ? (
+                    <div style={{ padding: '3rem', textAlign: 'center' }}>Loading user profile...</div>
+                  ) : (
+                    <FacultyProfilePage profile={profile} session={session} />
                   )
                 )
               } 
