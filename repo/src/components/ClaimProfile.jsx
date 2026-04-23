@@ -3,25 +3,33 @@ import { supabase } from '../supabaseClient'
 
 export default function ClaimProfile({ session }) {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState([])
-  const [searching, setSearching] = useState(false)
   
   const [existingClaim, setExistingClaim] = useState(null)
   const [loadingClaim, setLoadingClaim] = useState(true)
 
-  const [unlinkedProfiles, setUnlinkedProfiles] = useState([])
+  const [allProfiles, setAllProfiles] = useState([])
+  const [linkedProfileIds, setLinkedProfileIds] = useState([])
 
   // Load all unlinked profiles
   useEffect(() => {
     async function fetchUnlinked() {
-      const { data, error } = await supabase
+      // 1. Get all linked author IDs from profiles
+      const { data: profilesWithLinks } = await supabase
+        .from('profiles')
+        .select('linked_author_id')
+        .not('linked_author_id', 'is', null);
+        
+      const linkedIds = (profilesWithLinks || []).map(p => p.linked_author_id);
+      setLinkedProfileIds(linkedIds);
+
+      // 2. Get all authors
+      const { data: allAuthors, error } = await supabase
         .from('master_authors')
         .select('*')
-        .is('profile_id', null)
         .order('canonical_name', { ascending: true })
       
-      if (!error && data) {
-        setUnlinkedProfiles(data)
+      if (!error && allAuthors) {
+        setAllProfiles(allAuthors);
       }
     }
     fetchUnlinked()
@@ -67,42 +75,20 @@ export default function ClaimProfile({ session }) {
     }
   }, [session])
 
-  // 2. Search logic
-  async function handleSearch(e) {
-    e.preventDefault()
-    if (!query.trim()) return
-
-    setSearching(true)
-    // Using the custom PostgreSQL RPC function to do a deep fuzzy search across all 4 tables!
-    const { data, error } = await supabase
-      .rpc('search_faculty_profiles', { search_term: query.trim() })
-      .limit(10)
-    
-    if (error) {
-      console.error(error)
-      setResults([])
-    } else {
-      // Ensure we only show explicitly unlinked profiles
-      const availableOnly = (data || []).filter(fetched => 
-        unlinkedProfiles.some(up => up.id === fetched.id)
-      )
-      setResults(availableOnly)
-    }
-    setSearching(false)
-  }
+  // Dynamic Client-side Search logic replacing handleSearch
 
   // 3. Submit Claim Route
   async function submitClaim(authorId) {
     if (!confirm('Are you sure you want to claim this profile? Admin approval is required.')) return
 
     // 3a. Security Check: Is this profile already claimed or pending?
-    const { data: existingAuthor } = await supabase
-      .from('master_authors')
-      .select('profile_id')
-      .eq('id', authorId)
-      .single()
+    const { data: existingLinkedProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('linked_author_id', authorId)
+      .maybeSingle()
 
-    if (existingAuthor && existingAuthor.profile_id) {
+    if (existingLinkedProfile) {
       alert("This faculty profile has already been verified and claimed by another user.")
       return
     }
@@ -175,60 +161,80 @@ export default function ClaimProfile({ session }) {
       )}
 
       {/* Search Bar */}
-      <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem' }}>
+      <div style={{ position: 'relative', marginBottom: '2rem' }}>
         <input 
           type="text"
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="Enter your name (e.g. Vadlana)..."
+          placeholder="Enter your name (e.g. Vadlana) to filter dynamically..."
           style={{
-            flex: 1, padding: '0.85rem 1rem', borderRadius: 10,
+            width: '100%', padding: '0.85rem 1rem 0.85rem 3rem', borderRadius: 10,
             background: 'var(--color-header-bg)', border: '1px solid var(--color-border)',
-            color: 'var(--color-text)', fontSize: '0.95rem',
+            color: 'var(--color-text)', fontSize: '0.95rem', boxSizing: 'border-box',
             outline: 'none', transition: 'border-color 0.2s',
           }}
           onFocus={e => e.currentTarget.style.borderColor = 'var(--color-accent)'}
           onBlur={e => e.currentTarget.style.borderColor = 'var(--color-border)'}
         />
-        <button 
-          type="submit" 
-          disabled={searching || !query}
-          style={{
-            padding: '0 1.5rem', borderRadius: 10,
-            background: 'var(--color-accent)', color: '#fff', border: 'none',
-            fontWeight: 600, cursor: (searching || !query) ? 'not-allowed' : 'pointer',
-            opacity: (searching || !query) ? 0.7 : 1, transition: 'filter 0.2s'
-          }}
-          onMouseEnter={e => { if(!searching && query) e.currentTarget.style.filter = 'brightness(1.15)' }}
-          onMouseLeave={e => { e.currentTarget.style.filter = 'none' }}
+        <svg 
+           xmlns="http://www.w3.org/2000/svg" 
+           width="20" height="20" viewBox="0 0 24 24" fill="none" 
+           stroke="var(--color-text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+           style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
         >
-          {searching ? '🔍...' : 'Search'}
-        </button>
-      </form>
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+      </div>
 
       {/* Results */}
       {(() => {
-        const displayList = (query && results.length > 0) || (query && !searching) ? results : unlinkedProfiles;
+        let displayList = allProfiles;
+        
+        if (query.trim()) {
+          const lowerQuery = query.trim().toLowerCase();
+          const exactStartsWith = [];
+          const includes = [];
+
+          allProfiles.forEach(author => {
+            const nameLower = author.canonical_name.toLowerCase();
+            const deptLower = (author.department || '').toLowerCase();
+
+            if (nameLower.startsWith(lowerQuery)) {
+              exactStartsWith.push(author);
+            } else if (nameLower.includes(lowerQuery) || deptLower.includes(lowerQuery)) {
+              includes.push(author);
+            }
+          });
+
+          displayList = [...exactStartsWith, ...includes];
+        }
 
         if (displayList.length === 0) {
-          return query && !searching ? (
-             <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>No unlinked records found matching "{query}".</p>
+          return query ? (
+             <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>No records found matching "{query}".</p>
           ) : null;
         }
 
         return (
           <>
             <h3 style={{ fontSize: '1.2rem', color: 'var(--color-text)', marginBottom: '1rem' }}>
-              {query && results.length > 0 ? 'Search Results' : 'Available Profiles for Linking'}
+              {query.trim() ? 'Closest Matches' : 'Master Database Records'}
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '500px', overflowY: 'auto', paddingRight: '0.5rem' }}>
-              {displayList.map(author => (
+              {displayList.map(author => {
+                const isClaimed = linkedProfileIds.includes(author.id);
+                return (
                 <div key={author.id} style={{
                   background: 'var(--color-card)', border: '1px solid var(--color-border)',
-                  borderRadius: 12, padding: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                  borderRadius: 12, padding: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  opacity: isClaimed ? 0.6 : 1
                 }}>
               <div>
-                <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text)', marginBottom: '0.25rem' }}>{author.canonical_name}</h3>
+                <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text)', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {author.canonical_name}
+                  {isClaimed && <span style={{ fontSize: '0.7rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '0.2rem 0.5rem', borderRadius: 4, fontWeight: 'bold' }}>Claimed</span>}
+                </h3>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>{author.department}</p>
                 <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                   <span title="Scopus H-Index">Scopus H: <strong>{author.scopus_h_index || 0}</strong></span>
@@ -236,19 +242,22 @@ export default function ClaimProfile({ session }) {
                 </div>
               </div>
               <button 
-                onClick={() => submitClaim(author.id)}
+                onClick={() => !isClaimed && submitClaim(author.id)}
+                disabled={isClaimed}
                 style={{
                   padding: '0.6rem 1rem', borderRadius: 8,
-                  background: 'transparent', color: '#10b981', border: '1px solid #10b981',
-                  fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s'
+                  background: isClaimed ? 'var(--color-header-bg)' : 'transparent', 
+                  color: isClaimed ? 'var(--color-text-muted)' : '#10b981', 
+                  border: isClaimed ? '1px solid var(--color-border)' : '1px solid #10b981',
+                  fontWeight: 600, fontSize: '0.8rem', cursor: isClaimed ? 'not-allowed' : 'pointer', transition: 'all 0.2s'
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#10b981'; e.currentTarget.style.color = '#fff' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#10b981' }}
+                onMouseEnter={e => { if(!isClaimed) { e.currentTarget.style.background = '#10b981'; e.currentTarget.style.color = '#fff'; } }}
+                onMouseLeave={e => { if(!isClaimed) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#10b981'; } }}
               >
-                Claim Profile
+                {isClaimed ? 'Already Claimed' : 'Claim Profile'}
               </button>
             </div>
-              ))}
+              )})}
             </div>
           </>
         );
