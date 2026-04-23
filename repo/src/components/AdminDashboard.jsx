@@ -70,7 +70,7 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
         id, created_at, status, master_author_id,
         profiles ( email )
       `)
-      .eq('status', 'pending')
+      .in('status', ['pending', 'detach_pending'])
       .order('created_at', { ascending: false })
     
     if (claimsError) {
