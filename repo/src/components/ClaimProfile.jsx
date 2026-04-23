@@ -42,13 +42,21 @@ export default function ClaimProfile({ session }) {
       setLoadingClaim(true)
       const { data, error } = await supabase
         .from('profile_claims')
-        .select(`*, master_authors(canonical_name, department)`)
+        .select(`*`)
         .eq('profile_id', session.user.id)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
       
-      if (data) setExistingClaim(data)
+      if (data) {
+        const { data: authorData } = await supabase
+          .from('master_authors')
+          .select('canonical_name, department')
+          .eq('id', data.master_author_id)
+          .maybeSingle()
+          
+        setExistingClaim({ ...data, master_authors: authorData })
+      }
       setLoadingClaim(false)
     }
     checkClaim()
@@ -109,7 +117,7 @@ export default function ClaimProfile({ session }) {
     const { data, error } = await supabase
       .from('profile_claims')
       .insert({ profile_id: session.user.id, master_author_id: authorId, status: 'pending' })
-      .select('*, master_authors(canonical_name, department)')
+      .select('*')
       .single()
 
     if (error) {
@@ -119,7 +127,8 @@ export default function ClaimProfile({ session }) {
         alert(`Error submitting claim: ${error.message}`)
       }
     } else {
-      setExistingClaim(data)
+      const match = allProfiles.find(p => p.id === authorId)
+      setExistingClaim({ ...data, master_authors: match })
     }
   }
 
