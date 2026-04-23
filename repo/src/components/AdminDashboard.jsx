@@ -66,10 +66,7 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
   async function fetchClaims() {
     const { data: claimsData, error: claimsError } = await supabase
       .from('profile_claims')
-      .select(`
-        id, created_at, status, master_author_id,
-        profiles ( email )
-      `)
+      .select(`id, created_at, status, master_author_id, profile_id`)
       .in('status', ['pending', 'detach_pending'])
       .order('created_at', { ascending: false })
     
@@ -82,7 +79,6 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
 
     const authorIds = (claimsData || []).map(c => c.master_author_id).filter(Boolean)
     let authorsMap = {}
-    
     if (authorIds.length > 0) {
       const { data: authorsData } = await supabase
         .from('master_authors')
@@ -94,9 +90,17 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
       }
     }
 
+    const profileIds = (claimsData || []).map(c => c.profile_id).filter(Boolean)
+    let profilesMap = {}
+    if (profileIds.length > 0) {
+      const { data: profsData } = await supabase.from('profiles').select('id, email').in('id', profileIds)
+      if (profsData) profsData.forEach(p => profilesMap[p.id] = p)
+    }
+
     const formattedClaims = (claimsData || []).map(c => ({
       ...c,
-      master_authors: authorsMap[c.master_author_id] || null
+      master_authors: authorsMap[c.master_author_id] || null,
+      profiles: profilesMap[c.profile_id] || null
     }))
 
     setClaims(formattedClaims)
@@ -109,10 +113,7 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
     // Fetch only approved claims from profile_claims table
     const { data: claimsData, error: claimsError } = await supabase
       .from('profile_claims')
-      .select(`
-        id, created_at, master_author_id,
-        profiles ( email )
-      `)
+      .select(`id, created_at, master_author_id, profile_id`)
       .eq('status', 'approved')
       .order('created_at', { ascending: false })
 
@@ -125,7 +126,6 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
 
     const authorIds = (claimsData || []).map(c => c.master_author_id).filter(Boolean)
     let authorsMap = {}
-    
     if (authorIds.length > 0) {
       const { data: authorsData } = await supabase
         .from('master_authors')
@@ -137,9 +137,16 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
       }
     }
 
+    const profileIds = (claimsData || []).map(c => c.profile_id).filter(Boolean)
+    let profilesMap = {}
+    if (profileIds.length > 0) {
+      const { data: profsData } = await supabase.from('profiles').select('id, email').in('id', profileIds)
+      if (profsData) profsData.forEach(p => profilesMap[p.id] = p)
+    }
+
     const formattedConnections = (claimsData || []).map(c => ({
       id: c.id,
-      email: c.profiles?.email || 'Unknown Email',
+      email: profilesMap[c.profile_id]?.email || 'Unknown Email',
       created_at: c.created_at,
       master_authors: authorsMap[c.master_author_id] || null
     }))
