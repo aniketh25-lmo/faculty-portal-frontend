@@ -9,6 +9,24 @@ export default function ClaimProfile({ session }) {
   const [existingClaim, setExistingClaim] = useState(null)
   const [loadingClaim, setLoadingClaim] = useState(true)
 
+  const [unlinkedProfiles, setUnlinkedProfiles] = useState([])
+
+  // Load all unlinked profiles
+  useEffect(() => {
+    async function fetchUnlinked() {
+      const { data, error } = await supabase
+        .from('master_authors')
+        .select('*')
+        .is('profile_id', null)
+        .order('canonical_name', { ascending: true })
+      
+      if (!error && data) {
+        setUnlinkedProfiles(data)
+      }
+    }
+    fetchUnlinked()
+  }, [])
+
   // 1. Check if the user already has a pending claim
   useEffect(() => {
     async function checkClaim() {
@@ -64,7 +82,11 @@ export default function ClaimProfile({ session }) {
       console.error(error)
       setResults([])
     } else {
-      setResults(data || [])
+      // Ensure we only show explicitly unlinked profiles
+      const availableOnly = (data || []).filter(fetched => 
+        unlinkedProfiles.some(up => up.id === fetched.id)
+      )
+      setResults(availableOnly)
     }
     setSearching(false)
   }
@@ -185,13 +207,26 @@ export default function ClaimProfile({ session }) {
       </form>
 
       {/* Results */}
-      {results.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {results.map(author => (
-            <div key={author.id} style={{
-              background: 'var(--color-card)', border: '1px solid var(--color-border)',
-              borderRadius: 12, padding: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-            }}>
+      {(() => {
+        const displayList = (query && results.length > 0) || (query && !searching) ? results : unlinkedProfiles;
+
+        if (displayList.length === 0) {
+          return query && !searching ? (
+             <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>No unlinked records found matching "{query}".</p>
+          ) : null;
+        }
+
+        return (
+          <>
+            <h3 style={{ fontSize: '1.2rem', color: 'var(--color-text)', marginBottom: '1rem' }}>
+              {query && results.length > 0 ? 'Search Results' : 'Available Profiles for Linking'}
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '500px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+              {displayList.map(author => (
+                <div key={author.id} style={{
+                  background: 'var(--color-card)', border: '1px solid var(--color-border)',
+                  borderRadius: 12, padding: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                }}>
               <div>
                 <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text)', marginBottom: '0.25rem' }}>{author.canonical_name}</h3>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>{author.department}</p>
@@ -213,12 +248,11 @@ export default function ClaimProfile({ session }) {
                 Claim Profile
               </button>
             </div>
-          ))}
-        </div>
-      )}
-      {results.length === 0 && query && !searching && (
-        <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>No records found matching "{query}".</p>
-      )}
+              ))}
+            </div>
+          </>
+        );
+      })()}
     </div>
   )
 }
