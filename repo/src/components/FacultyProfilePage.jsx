@@ -139,13 +139,15 @@ export default function FacultyProfilePage({ profile, session }) {
     if (!confirm("Are you sure you want to request to detach from this author identity? An admin must approve this. You will lose access to the analytics dashboard until you claim a new identity.")) return
     
     setDetachLoading(true)
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('profile_claims')
       .update({ status: 'detach_pending' })
       .eq('id', activeClaim.id)
+      .select()
+      .single()
       
-    if (error) {
-      alert("Error requesting detachment: " + error.message)
+    if (error || !data) {
+      alert("Error requesting detachment (Check RLS Policies): " + (error?.message || "0 rows updated"))
     } else {
       setActiveClaim(prev => ({ ...prev, status: 'detach_pending' }))
       setSaveMsg({ type: 'success', text: 'Detachment request sent to administrators.' })
