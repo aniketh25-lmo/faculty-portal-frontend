@@ -67,7 +67,7 @@ export default function HomePage({ session, profile }) {
             </p>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.25rem' }}>
               AcademicPulsePro
-              <span style={{ fontSize: '0.72rem', color: 'var(--color-accent)', fontWeight: 400, marginLeft: '0.4rem' }}>v3.0</span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--color-accent)', fontWeight: 400, marginLeft: '0.4rem' }}>v6.0</span>
             </h3>
             <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
               Run the scraper locally to pull publications from all sources and sync them to the cloud database.

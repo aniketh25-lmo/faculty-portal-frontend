@@ -36,7 +36,7 @@ export default function ActionButtons() {
           href={SCRAPER_URL}
           className="px-8 py-4 rounded-2xl bg-blue-600 hover:bg-blue-500 transition shadow-lg shadow-blue-600/30 text-lg font-semibold text-center"
         >
-          Download Academic Pulse Pro v3.0
+          Download Academic Pulse Pro v6.0
         </a>
 
         <button

@@ -38,7 +38,7 @@ export default function ScholarEngine() {
               color: 'var(--color-text)', marginBottom: '0.25rem',
             }}>
               AcademicPulsePro
-              <span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--color-accent)', marginLeft: '0.6rem' }}>v5.0</span>
+              <span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--color-accent)', marginLeft: '0.6rem' }}>v6.0</span>
             </h2>
             <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.65, maxWidth: 560 }}>
               A desktop-grade research intelligence tool that scrapes, consolidates, and pushes
@@ -64,7 +64,7 @@ export default function ScholarEngine() {
             ⬇ Download AcademicPulsePro.exe
           </a>
           <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-            Windows • v5.0 • GitHub Releases
+            Windows • v6.0 • GitHub Releases
           </span>
         </div>
       </div>
