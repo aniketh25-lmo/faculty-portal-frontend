@@ -40,6 +40,9 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
   const [clearMasterLoading, setClearMasterLoading] = useState(false)
   const [clearDbLoading, setClearDbLoading] = useState(false)
   const [clearDbConfirmText, setClearDbConfirmText] = useState('')
+  const [deleteAuthorTarget, setDeleteAuthorTarget] = useState('')
+  const [deleteAuthorConfirmText, setDeleteAuthorConfirmText] = useState('')
+  const [deleteAuthorLoading, setDeleteAuthorLoading] = useState(false)
 
   // ── User Management state ───────────────────────────────────────
   const [allProfiles, setAllProfiles] = useState([])
@@ -311,6 +314,29 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
   }
 
   // ── Danger Zone Handlers ─────────────────────────────────────
+  async function handleDeleteSingleAuthor() {
+    if (!deleteAuthorTarget) return
+    const author = globalAuthors.find(a => a.id === deleteAuthorTarget)
+    if (!author) return
+    if (deleteAuthorConfirmText.trim() !== author.canonical_name) return
+    
+    if (!confirm(`Permanently delete ${author.canonical_name} and ALL their associated publications and claims?`)) return
+    
+    setDeleteAuthorLoading(true)
+    const { error } = await supabase.rpc('delete_single_author', { target_author_id: deleteAuthorTarget })
+    
+    if (error) {
+      alert(`Error: ${error.message}`)
+    } else {
+      alert(`Successfully deleted ${author.canonical_name}.`)
+      setDeleteAuthorTarget('')
+      setDeleteAuthorConfirmText('')
+      // Refresh global data to immediately remove author from graphs
+      fetchAdvancedGlobalData()
+    }
+    setDeleteAuthorLoading(false)
+  }
+
   async function handleClearMaster() {
     if (!confirm('⚠️ This will permanently delete ALL records from master_publications. Are you sure?')) return
     setClearMasterLoading(true)
@@ -1007,6 +1033,55 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
             <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', lineHeight: 1.6, margin: 0 }}>
               <strong style={{ color: '#f87171' }}>Danger Zone — Destructive Operations.</strong> These actions are irreversible. Data deleted here cannot be recovered unless you have a database backup. Proceed only if you are certain.
             </p>
+          </div>
+
+          {/* ── Targeted Author Deletion ── */}
+          <div style={{ background: 'var(--color-card)', border: '2px solid rgba(239,68,68,0.15)', borderRadius: 12, padding: '1.5rem' }}>
+            <h4 style={{ fontSize: '1rem', fontWeight: 600, color: '#f87171', marginBottom: '0.4rem' }}>Targeted Author Deletion</h4>
+            <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+              Select an author to permanently delete them and all their associated publications, claims, and profile links.
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <select 
+                value={deleteAuthorTarget}
+                onChange={e => { setDeleteAuthorTarget(e.target.value); setDeleteAuthorConfirmText('') }}
+                style={{ width: '100%', background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', padding: '0.6rem 1rem', borderRadius: 8, fontSize: '0.85rem', outline: 'none' }}
+              >
+                <option value="">-- Select an Author to Delete --</option>
+                {globalAuthors.map(a => (
+                  <option key={a.id} value={a.id}>{a.canonical_name} ({a.department})</option>
+                ))}
+              </select>
+              
+              {deleteAuthorTarget && (
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '0.5rem' }}>
+                  <input
+                    type="text"
+                    placeholder={`Type "${globalAuthors.find(a => a.id === deleteAuthorTarget)?.canonical_name}" to confirm`}
+                    value={deleteAuthorConfirmText}
+                    onChange={e => setDeleteAuthorConfirmText(e.target.value)}
+                    style={{ flex: 1, background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', padding: '0.6rem 1rem', borderRadius: 8, fontSize: '0.85rem', outline: 'none' }}
+                    onFocus={e => e.target.style.borderColor = '#ef4444'}
+                    onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
+                  />
+                  <button
+                    onClick={handleDeleteSingleAuthor}
+                    disabled={deleteAuthorLoading || deleteAuthorConfirmText.trim() !== globalAuthors.find(a => a.id === deleteAuthorTarget)?.canonical_name}
+                    style={{
+                      background: deleteAuthorConfirmText.trim() === globalAuthors.find(a => a.id === deleteAuthorTarget)?.canonical_name ? '#ef4444' : 'rgba(239,68,68,0.1)',
+                      color: deleteAuthorConfirmText.trim() === globalAuthors.find(a => a.id === deleteAuthorTarget)?.canonical_name ? '#fff' : 'rgba(239,68,68,0.4)',
+                      border: '1px solid rgba(239,68,68,0.3)',
+                      padding: '0.6rem 1.25rem', borderRadius: 8, fontSize: '0.82rem', fontWeight: 700,
+                      cursor: (deleteAuthorLoading || deleteAuthorConfirmText.trim() !== globalAuthors.find(a => a.id === deleteAuthorTarget)?.canonical_name) ? 'not-allowed' : 'pointer',
+                      whiteSpace: 'nowrap', transition: 'all 0.3s'
+                    }}
+                  >
+                    {deleteAuthorLoading ? 'Deleting...' : '☢ Delete Author'}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* ── Clear Master Publications ── */}
