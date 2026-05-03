@@ -348,6 +348,15 @@ export default function FacultyDashboard({ profile }) {
             filters
           )
           setIsExportModalOpen(false)
+          
+          if (profile && profile.id) {
+            supabase.from('notifications').insert({
+              user_id: profile.id,
+              title: 'Export Complete',
+              message: 'Your personal Excel Report has been generated successfully.',
+              type: 'success'
+            }).then()
+          }
         }}
       />
     </div>

@@ -41,6 +41,16 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
   const [clearDbLoading, setClearDbLoading] = useState(false)
   const [clearDbConfirmText, setClearDbConfirmText] = useState('')
 
+  // ── User Management state ───────────────────────────────────────
+  const [allProfiles, setAllProfiles] = useState([])
+  const [profilesLoading, setProfilesLoading] = useState(false)
+
+  // ── Broadcast state ─────────────────────────────────────────────
+  const [broadcastTitle, setBroadcastTitle] = useState('')
+  const [broadcastMessage, setBroadcastMessage] = useState('')
+  const [broadcastType, setBroadcastType] = useState('info')
+  const [isBroadcasting, setIsBroadcasting] = useState(false)
+
   useEffect(() => {
     fetchClaims()
     fetchSystemAnalytics()
@@ -61,7 +71,8 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
   // Fetch connections whenever that tab is activated
   useEffect(() => {
     if (activeTab === 'connections') fetchConnections()
-  }, [activeTab])
+    if (activeTab === 'users' && isSuperadmin) fetchProfiles()
+  }, [activeTab, isSuperadmin])
 
   async function fetchClaims() {
     const { data: claimsData, error: claimsError } = await supabase
@@ -155,6 +166,51 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
     setConnectionsLoading(false)
   }
 
+  async function fetchProfiles() {
+    setProfilesLoading(true)
+    const { data, error } = await supabase.from('profiles').select('id, email, role, created_at').order('created_at', { ascending: false })
+    if (data) setAllProfiles(data)
+    setProfilesLoading(false)
+  }
+
+  async function handleRoleChange(userId, newRole) {
+    const { error } = await supabase.rpc('update_user_role', { target_user_id: userId, new_role: newRole })
+    if (error) alert(`Error: ${error.message}`)
+    else {
+      setAllProfiles(prev => prev.map(p => p.id === userId ? { ...p, role: newRole } : p))
+      alert('Role updated successfully.')
+    }
+  }
+
+  async function handleSendBroadcast() {
+    if (!broadcastTitle || !broadcastMessage) {
+      alert('Please fill out both title and message.')
+      return
+    }
+    if (!confirm('Send this notification to ALL registered faculty members?')) return
+    setIsBroadcasting(true)
+    
+    // Fetch all user IDs
+    const { data: users } = await supabase.from('profiles').select('id')
+    if (users && users.length > 0) {
+      const inserts = users.map(u => ({
+        user_id: u.id,
+        title: broadcastTitle,
+        message: broadcastMessage,
+        type: broadcastType
+      }))
+      
+      const { error } = await supabase.from('notifications').insert(inserts)
+      if (error) alert('Error sending broadcast: ' + error.message)
+      else {
+        alert(`Broadcast sent to ${users.length} users!`)
+        setBroadcastTitle('')
+        setBroadcastMessage('')
+      }
+    }
+    setIsBroadcasting(false)
+  }
+
   async function fetchSystemAnalytics() {
     setAnalyticsLoading(true)
     const { data, error } = await supabase.rpc('get_system_analytics')
@@ -173,21 +229,41 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
     setAdvancedAnalyticsLoading(false)
   }
 
-  async function handleApprove(claimId) {
+  async function handleApprove(claimId, userId, authorName) {
     if (!confirm('Approve this claim? This will grant the user access to this profile.')) return
     const { error } = await supabase.rpc('approve_claim', { target_claim_id: claimId })
     if (error) alert(`Error: ${error.message}`)
-    else setClaims(c => c.filter(x => x.id !== claimId))
+    else {
+      setClaims(c => c.filter(x => x.id !== claimId))
+      if (userId) {
+        supabase.from('notifications').insert({
+          user_id: userId,
+          title: 'Profile Claim Approved',
+          message: `Your claim for the profile "${authorName}" has been approved!`,
+          type: 'success'
+        }).then()
+      }
+    }
   }
 
-  async function handleReject(claimId) {
+  async function handleReject(claimId, userId, authorName) {
     if (!confirm('Reject this claim?')) return
     const { error } = await supabase.rpc('reject_claim', { target_claim_id: claimId })
     if (error) alert(`Error: ${error.message}`)
-    else setClaims(c => c.filter(x => x.id !== claimId))
+    else {
+      setClaims(c => c.filter(x => x.id !== claimId))
+      if (userId) {
+        supabase.from('notifications').insert({
+          user_id: userId,
+          title: 'Profile Claim Rejected',
+          message: `Your claim for the profile "${authorName}" was rejected by an administrator.`,
+          type: 'warning'
+        }).then()
+      }
+    }
   }
 
-  async function handleApproveDetach(claimId) {
+  async function handleApproveDetach(claimId, userId, authorName) {
     if (!confirm('Approve detachment? The user will be permanently unlinked from this author profile.')) return
     const { error } = await supabase.rpc('approve_detach_claim', { target_claim_id: claimId })
     if (error) {
@@ -195,6 +271,14 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
     } else {
       setClaims(c => c.filter(x => x.id !== claimId))
       fetchConnections()
+      if (userId) {
+        supabase.from('notifications').insert({
+          user_id: userId,
+          title: 'Profile Detached',
+          message: `You have been successfully detached from the profile "${authorName}".`,
+          type: 'info'
+        }).then()
+      }
     }
   }
 
@@ -209,6 +293,16 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
       if (authorRes.error) throw authorRes.error
       generateExcelReport("VNR VJIET — CSE Institutional Report", authorRes.data || [], pubRes.data || [], filters)
       setIsExportModalOpen(false)
+      
+      // Notify success
+      if (profile && profile.id) {
+        supabase.from('notifications').insert({
+          user_id: profile.id,
+          title: 'Export Complete',
+          message: 'Your Institutional Excel Report has been generated successfully.',
+          type: 'success'
+        }).then()
+      }
     } catch (err) {
       alert("Failed to export database: " + err.message)
     } finally {
@@ -292,14 +386,21 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
           )}
         </button>
 
+        <button onClick={() => setActiveTab('connections')} style={tabStyle('connections')}>
+          🔗 Connections
+        </button>
+        <button onClick={() => setActiveTab('viewas')} style={tabStyle('viewas')}>
+          👁 View As Author
+        </button>
+
         {/* Superadmin-only tabs */}
         {isSuperadmin && (
           <>
-            <button onClick={() => setActiveTab('connections')} style={tabStyle('connections')}>
-              🔗 Connections
+            <button onClick={() => setActiveTab('users')} style={tabStyle('users')}>
+              👥 User Roles
             </button>
-            <button onClick={() => setActiveTab('viewas')} style={tabStyle('viewas')}>
-              👁 View As Author
+            <button onClick={() => setActiveTab('broadcast')} style={tabStyle('broadcast')}>
+              📢 Broadcast
             </button>
             <button onClick={() => setActiveTab('danger')} style={{
               ...tabStyle('danger'),
@@ -505,11 +606,11 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
                     <td style={{ padding: '1rem 1.5rem', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{c.master_authors?.department || '—'}</td>
                     <td style={{ padding: '1rem 1.5rem', textAlign: 'right', display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
                       {c.status === 'detach_pending' ? (
-                        <button onClick={() => handleApproveDetach(c.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '0.35rem 0.6rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Approve Detach</button>
+                        <button onClick={() => handleApproveDetach(c.id, c.profile_id, c.master_authors?.canonical_name)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '0.35rem 0.6rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Approve Detach</button>
                       ) : (
                         <>
-                          <button onClick={() => handleApprove(c.id)} style={{ background: '#10b981', color: '#fff', border: 'none', padding: '0.35rem 0.6rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Approve</button>
-                          <button onClick={() => handleReject(c.id)} style={{ background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', padding: '0.35rem 0.6rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Reject</button>
+                          <button onClick={() => handleApprove(c.id, c.profile_id, c.master_authors?.canonical_name)} style={{ background: '#10b981', color: '#fff', border: 'none', padding: '0.35rem 0.6rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Approve</button>
+                          <button onClick={() => handleReject(c.id, c.profile_id, c.master_authors?.canonical_name)} style={{ background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', padding: '0.35rem 0.6rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Reject</button>
                         </>
                       )}
                     </td>
@@ -522,9 +623,9 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
       )}
 
       {/* ══════════════════════════════════════════════════════════
-          TAB: Connections (Superadmin only)
+          TAB: Connections (All Admins)
       ══════════════════════════════════════════════════════════ */}
-      {activeTab === 'connections' && isSuperadmin && (
+      {activeTab === 'connections' && (
         <div>
           <div style={{ marginBottom: '1.5rem' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.3rem' }}>Active Account ↔ Author Connections</h3>
@@ -585,9 +686,9 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
       )}
 
       {/* ══════════════════════════════════════════════════════════
-          TAB: View As Author (Superadmin only)
+          TAB: View As Author (All Admins)
       ══════════════════════════════════════════════════════════ */}
-      {activeTab === 'viewas' && isSuperadmin && (
+      {activeTab === 'viewas' && (
         <div>
           <div style={{ marginBottom: '1.5rem' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.3rem' }}>View Faculty Dashboards</h3>
@@ -672,6 +773,126 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════
+          TAB: User Roles (Superadmin only)
+      ══════════════════════════════════════════════════════════ */}
+      {activeTab === 'users' && isSuperadmin && (
+        <div>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.3rem' }}>User Role Management</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Promote or demote users. Root Superadmin cannot be demoted.</p>
+          </div>
+
+          {profilesLoading ? (
+            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading users...</div>
+          ) : (
+            <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: 'var(--color-header-bg)', color: 'var(--color-text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <th style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)' }}>Email</th>
+                    <th style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)' }}>Current Role</th>
+                    <th style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)' }}>Joined</th>
+                    <th style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allProfiles.map((p) => {
+                    const isRoot = p.email.toLowerCase() === '22071a05c2@vnrvjiet.in'
+                    const displayRole = isRoot ? 'superadmin' : p.role
+                    return (
+                      <tr key={p.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <td style={{ padding: '1rem 1.5rem', fontSize: '0.85rem', color: 'var(--color-text)' }}>
+                          {p.email} {isRoot && <span style={{ marginLeft: 8, background: '#ef4444', color: '#fff', fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: 20 }}>ROOT</span>}
+                        </td>
+                        <td style={{ padding: '1rem 1.5rem' }}>
+                          <span style={{ 
+                            background: displayRole === 'superadmin' ? 'rgba(239,68,68,0.1)' : displayRole === 'admin' ? 'rgba(16,185,129,0.1)' : 'rgba(59,130,246,0.1)', 
+                            color: displayRole === 'superadmin' ? '#ef4444' : displayRole === 'admin' ? '#10b981' : '#3b82f6', 
+                            padding: '0.2rem 0.6rem', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600 
+                          }}>
+                            {displayRole}
+                          </span>
+                        </td>
+                        <td style={{ padding: '1rem 1.5rem', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                          {new Date(p.created_at).toLocaleDateString()}
+                        </td>
+                        <td style={{ padding: '1rem 1.5rem' }}>
+                          {isRoot ? (
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic', padding: '0.4rem 0.6rem' }}>Fixed Role</span>
+                          ) : (
+                            <div style={{ position: 'relative', display: 'inline-block', width: 120 }}>
+                              <select 
+                                value={p.role} 
+                                onChange={(e) => handleRoleChange(p.id, e.target.value)}
+                                style={{ 
+                                  appearance: 'none', width: '100%',
+                                  background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', 
+                                  padding: '0.4rem 2rem 0.4rem 0.8rem', borderRadius: 6, fontSize: '0.8rem', outline: 'none', cursor: 'pointer',
+                                  transition: 'border-color 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                                }}
+                                onFocus={e => e.target.style.borderColor = 'var(--color-accent)'}
+                                onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
+                              >
+                                <option value="faculty">Faculty</option>
+                                <option value="admin">Admin</option>
+                                <option value="superadmin">Superadmin</option>
+                              </select>
+                              <div style={{ position: 'absolute', right: '0.6rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>
+                                ▼
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════
+          TAB: Broadcast (Superadmin only)
+      ══════════════════════════════════════════════════════════ */}
+      {activeTab === 'broadcast' && isSuperadmin && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: 600 }}>
+          <div style={{ marginBottom: '0.5rem' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.3rem' }}>System Broadcast</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Send an in-app notification to all registered users.</p>
+          </div>
+
+          <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.4rem' }}>Notification Type</label>
+              <select value={broadcastType} onChange={e => setBroadcastType(e.target.value)} style={{ width: '100%', background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', padding: '0.6rem 0.8rem', borderRadius: 8, fontSize: '0.85rem', outline: 'none' }}>
+                <option value="info">Information (Blue)</option>
+                <option value="success">Success (Green)</option>
+                <option value="warning">Warning (Yellow)</option>
+                <option value="system">System Alert (Red)</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.4rem' }}>Title</label>
+              <input type="text" value={broadcastTitle} onChange={e => setBroadcastTitle(e.target.value)} placeholder="e.g. System Maintenance Notice" style={{ width: '100%', background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', padding: '0.6rem 0.8rem', borderRadius: 8, fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.4rem' }}>Message</label>
+              <textarea value={broadcastMessage} onChange={e => setBroadcastMessage(e.target.value)} placeholder="Type your broadcast message here..." rows={4} style={{ width: '100%', background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)', padding: '0.6rem 0.8rem', borderRadius: 8, fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} />
+            </div>
+            <button
+              onClick={handleSendBroadcast}
+              disabled={isBroadcasting}
+              style={{ background: 'var(--color-accent)', color: '#fff', border: 'none', padding: '0.7rem', borderRadius: 8, fontSize: '0.85rem', fontWeight: 600, cursor: isBroadcasting ? 'wait' : 'pointer', marginTop: '0.5rem' }}
+            >
+              {isBroadcasting ? 'Sending Broadcast...' : '📢 Send to All Users'}
+            </button>
+          </div>
         </div>
       )}
 

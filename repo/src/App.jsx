@@ -24,8 +24,9 @@ export default function App() {
   const [session,       setSession]       = useState(null)
   const [profile,       setProfile]       = useState(null)
 
-  const isSuperadmin = profile?.email?.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()
-  
+  const isSuperadmin = profile?.role === 'superadmin' || profile?.email?.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()
+  const isAdmin = profile?.role === 'admin' || isSuperadmin
+
   const dbStatus = useHeartbeat(30000)
 
   useEffect(() => {
@@ -115,7 +116,7 @@ export default function App() {
                   profile === null ? (
                     <div style={{ padding: '3rem', textAlign: 'center' }}>Loading user profile...</div>
                   ) : !profile.linked_author_id ? (
-                    profile.role === 'admin' ? <Navigate to="/admin" /> : <ClaimProfile session={session} />
+                    isAdmin ? <Navigate to="/admin" /> : <ClaimProfile session={session} />
                   ) : (
                     <FacultyDashboard profile={profile} />
                   )
@@ -130,7 +131,7 @@ export default function App() {
                 !session ? <Navigate to="/login" /> : (
                   profile === null ? (
                     <div style={{ padding: '3rem', textAlign: 'center' }}>Loading user profile...</div>
-                  ) : profile?.role === 'admin' ? (
+                  ) : isAdmin ? (
                     <AdminDashboard profile={profile} isSuperadmin={isSuperadmin} />
                   ) : (
                     <Navigate to="/dashboard" />

@@ -1,6 +1,7 @@
 import { APP_NAME } from '../constants'
 import { Link, useLocation } from 'react-router-dom'
 import { useState } from 'react'
+import NotificationsMenu from './NotificationsMenu'
 
 const DOT_COLOR = { active: '#10b981', connecting: '#f59e0b', offline: '#ef4444' }
 const DOT_LABEL = { active: 'DB ACTIVE', connecting: 'CONNECTING', offline: 'DB OFFLINE' }
@@ -184,6 +185,8 @@ export default function Header({ theme, onThemeToggle, onInfoClick, dbStatus, se
         >
           ⓘ
         </button>
+
+        {session && profile && <NotificationsMenu profile={profile} />}
 
         {/* Theme toggle */}
         <button onClick={onThemeToggle} title="Toggle theme" style={{
