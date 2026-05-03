@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
-import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { PieChart, Pie, Cell, LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import ExportModal from './ExportModal'
 import FacultyDashboard from './FacultyDashboard'
 import { generateExcelReport } from '../utils/excel'
@@ -495,6 +495,46 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
                     const totalWosCites     = globalAuthors.reduce((acc, a) => acc + (a.wos_citations || 0), 0)
                     const topFaculty = [...globalAuthors].sort((a,b) => ((b.scholar_citations||0)+(b.scopus_citations||0)+(b.wos_citations||0)) - ((a.scholar_citations||0)+(a.scopus_citations||0)+(a.wos_citations||0))).slice(0, 5)
                     const topGlobalPapers = [...globalPubs].sort((a,b) => ((b.scholar_citations||0)+(b.scopus_citations||0)+(b.wos_citations||0)) - ((a.scholar_citations||0)+(a.scopus_citations||0)+(a.wos_citations||0))).slice(0, 5)
+
+                    // --- Advanced Analytics Calculations ---
+                    const currentYear = new Date().getFullYear()
+                    const yearMap = {}
+                    globalPubs.forEach(p => {
+                      const y = p.publication_year
+                      if (y && y >= currentYear - 10 && y <= currentYear) {
+                        yearMap[y] = (yearMap[y] || 0) + 1
+                      }
+                    })
+                    const growthData = Object.entries(yearMap)
+                      .sort((a,b) => parseInt(a[0]) - parseInt(b[0]))
+                      .map(([year, count]) => ({ year, papers: count }))
+
+                    const deptMap = {}
+                    globalAuthors.forEach(a => {
+                      if (a.department) {
+                        deptMap[a.department] = (deptMap[a.department] || 0) + 1
+                      }
+                    })
+                    const deptData = Object.entries(deptMap)
+                      .sort((a,b) => b[1] - a[1])
+                      .slice(0, 6)
+                      .map(([name, value]) => ({ name, value }))
+
+                    const venueMap = {}
+                    globalPubs.forEach(p => {
+                      if (p.source_name && p.source_name.trim()) {
+                        let venue = p.source_name.trim()
+                        if (venue.length > 30) venue = venue.substring(0, 30) + '...'
+                        venueMap[venue] = (venueMap[venue] || 0) + 1
+                      }
+                    })
+                    const topGlobalVenues = Object.entries(venueMap)
+                      .sort((a,b) => b[1] - a[1])
+                      .slice(0, 5)
+                      .map(([name, count]) => ({ name, count }))
+
+                    const ADVANCED_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#f43f5e', '#06b6d4']
+
                     return (
                       <>
                         <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '1rem', letterSpacing: '-0.02em', borderTop: '1px solid var(--color-border)', paddingTop: '2rem' }}>Global Citation Matrix</h2>
@@ -516,6 +556,67 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
                               </div>
                             </div>
                           ))}
+                        </div>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '1rem', letterSpacing: '-0.02em', borderTop: '1px solid var(--color-border)', paddingTop: '2rem' }}>Institutional Deep Analytics</h2>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+                          
+                          {/* 10-Year Growth Area Chart */}
+                          <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem' }}>
+                            <h3 style={{ fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '0.5rem', fontWeight: 600 }}>10-Year Institutional Growth</h3>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>Cumulative output volume over the last decade.</p>
+                            <div style={{ width: '100%', height: 260 }}>
+                              <ResponsiveContainer>
+                                <AreaChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                  <defs>
+                                    <linearGradient id="colorGrowth" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={0.4}/>
+                                      <stop offset="95%" stopColor="var(--color-accent)" stopOpacity={0}/>
+                                    </linearGradient>
+                                  </defs>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                                  <XAxis dataKey="year" stroke="var(--color-border)" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                                  <YAxis stroke="var(--color-border)" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                                  <Tooltip contentStyle={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 8, color: 'var(--color-text)', fontSize: '0.8rem' }} />
+                                  <Area type="monotone" dataKey="papers" name="Outputs" stroke="var(--color-accent)" strokeWidth={3} fillOpacity={1} fill="url(#colorGrowth)" />
+                                </AreaChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </div>
+
+                          {/* Departmental Contributions Donut */}
+                          <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem' }}>
+                            <h3 style={{ fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '0.5rem', fontWeight: 600 }}>Departmental Distribution</h3>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>Total faculty profiles mapped by department.</p>
+                            <div style={{ width: '100%', height: 260 }}>
+                              <ResponsiveContainer>
+                                <PieChart>
+                                  <Pie data={deptData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={3} dataKey="value" stroke="var(--color-card)">
+                                    {deptData.map((entry, index) => <Cell key={`cell-${index}`} fill={ADVANCED_COLORS[index % ADVANCED_COLORS.length]} />)}
+                                  </Pie>
+                                  <Tooltip contentStyle={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 8, color: 'var(--color-text)', fontSize: '0.8rem' }} />
+                                  <Legend wrapperStyle={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }} iconType="circle" />
+                                </PieChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </div>
+
+                          {/* Global Top Venues Bar Chart */}
+                          <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem', gridColumn: '1 / -1' }}>
+                            <h3 style={{ fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '0.5rem', fontWeight: 600 }}>Global Top Publishing Venues</h3>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>The most popular journals and conferences across the entire institution.</p>
+                            <div style={{ width: '100%', height: 260 }}>
+                              <ResponsiveContainer>
+                                <BarChart data={topGlobalVenues} layout="vertical" margin={{ top: 0, right: 30, left: 40, bottom: 0 }}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
+                                  <XAxis type="number" stroke="var(--color-border)" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} tickLine={false} axisLine={false} />
+                                  <YAxis type="category" dataKey="name" width={220} stroke="var(--color-border)" tick={{ fill: 'var(--color-text)', fontSize: 10 }} tickLine={false} axisLine={false} />
+                                  <Tooltip cursor={{ fill: 'rgba(128,128,128,0.05)' }} contentStyle={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 8, color: 'var(--color-text)', fontSize: '0.8rem' }} />
+                                  <Bar dataKey="count" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={24} />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </div>
+
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginTop: '1rem' }}>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, LineChart, Line, ScatterChart, Scatter, ZAxis, PieChart, Pie, Cell, Treemap, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import ExportModal from './ExportModal'
 import { generateExcelReport } from '../utils/excel'
 
@@ -96,6 +96,37 @@ export default function FacultyDashboard({ profile }) {
   const topCollaborators = Object.entries(collaboratorCounts)
     .sort((a,b) => b[1] - a[1])
     .slice(0, 5)
+
+  // --- New Analytical Visualizations Data ---
+  const scatterData = all_publications.map(p => ({
+    year: p.publication_year || 0,
+    citations: (p.scholar_citations || 0) + (p.scopus_citations || 0) + (p.wos_citations || 0),
+    title: p.title
+  })).filter(d => d.year > 0 && d.citations > 0)
+
+  const venueCounts = {}
+  all_publications.forEach(p => {
+    if (p.source_name && p.source_name.trim()) {
+      let venue = p.source_name.trim()
+      if (venue.length > 25) venue = venue.substring(0, 25) + '...'
+      venueCounts[venue] = (venueCounts[venue] || 0) + 1
+    }
+  })
+  const topVenuesData = Object.entries(venueCounts)
+    .sort((a,b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, count]) => ({ name, count }))
+
+  const citationDistributionData = [
+    { name: 'Scholar', value: rawAuthor?.scholar_citations || 0, fill: '#3b82f6' },
+    { name: 'Scopus', value: rawAuthor?.scopus_citations || 0, fill: '#f97316' },
+    { name: 'WoS', value: rawAuthor?.wos_citations || 0, fill: '#a855f7' }
+  ].filter(d => d.value > 0)
+
+  const treemapData = topCollaborators.map(([name, count]) => ({ name, size: count }))
+
+  const COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#f43f5e']
+
 
   return (
     <div className="slide-up" style={{ padding: '3rem 2rem', maxWidth: 1100, margin: '0 auto' }}>
@@ -227,21 +258,73 @@ export default function FacultyDashboard({ profile }) {
         </div>
       </div>
 
+      {/* ── Deep Analytics Section ── */}
+      <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--color-text)', marginTop: '3.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.8rem' }}>Deep Analytics</h2>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+        {/* Scatter Plot */}
+        <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem' }}>
+          <h3 style={{ fontSize: '0.9rem', color: 'var(--color-text)', marginBottom: '0.5rem', fontWeight: 600 }}>Publication Impact Map</h3>
+          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>Spot high-impact "breakout" papers over time.</p>
+          <div style={{ width: '100%', height: 260 }}>
+            {scatterData.length > 0 ? (
+              <ResponsiveContainer>
+                <ScatterChart margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <XAxis dataKey="year" type="number" name="Year" domain={['dataMin - 1', 'dataMax + 1']} tickCount={5} stroke="var(--color-border)" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis dataKey="citations" type="number" name="Citations" stroke="var(--color-border)" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <ZAxis dataKey="citations" range={[40, 400]} name="Impact" />
+                  <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 8, color: 'var(--color-text)', fontSize: '0.8rem' }} />
+                  <Scatter data={scatterData} fill="var(--color-accent)" fillOpacity={0.6} />
+                </ScatterChart>
+              </ResponsiveContainer>
+            ) : <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Insufficient citation data for scatter plot.</div>}
+          </div>
+        </div>
+
+        {/* Citation Distribution */}
+        <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem' }}>
+          <h3 style={{ fontSize: '0.9rem', color: 'var(--color-text)', marginBottom: '0.5rem', fontWeight: 600 }}>Citation Source Distribution</h3>
+          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>Proportion of citations originating from each indexing platform.</p>
+          <div style={{ width: '100%', height: 260 }}>
+            {citationDistributionData.length > 0 ? (
+              <ResponsiveContainer>
+                <PieChart>
+                  <Pie data={citationDistributionData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={3} dataKey="value" stroke="var(--color-card)">
+                    {citationDistributionData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} />)}
+                  </Pie>
+                  <Tooltip contentStyle={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 8, color: 'var(--color-text)', fontSize: '0.8rem' }} />
+                  <Legend wrapperStyle={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }} iconType="circle" />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>No citation data available.</div>}
+          </div>
+        </div>
+      </div>
+
       {/* ── Advanced Insight Panels ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginTop: '2.5rem' }}>
         
-        {/* Top Collaborators Network */}
+        {/* Top Collaborators Treemap */}
         <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem' }}>
-          <h3 style={{ fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '0.5rem', fontWeight: 600 }}>Frequent Collaborators</h3>
-          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>Researchers commonly co-authoring with {identity.canonical_name}.</p>
+          <h3 style={{ fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '0.5rem', fontWeight: 600 }}>Frequent Collaborators Network</h3>
+          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>Researchers commonly co-authoring with {identity.canonical_name}. Area indicates volume.</p>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-            {topCollaborators.length > 0 ? topCollaborators.map(([name, count], idx) => (
-              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-accent-muted)', padding: '0.8rem', borderRadius: 8 }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--color-text)', fontWeight: 500 }}>{name}</span>
-                <span style={{ fontSize: '0.75rem', background: 'var(--color-accent)', color: '#fff', padding: '0.2rem 0.6rem', borderRadius: 12, fontWeight: 700 }}>{count} Papers</span>
-              </div>
-            )) : <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>No recurring collaborators found.</div>}
+          <div style={{ width: '100%', height: 200 }}>
+            {treemapData.length > 0 ? (
+              <ResponsiveContainer>
+                <Treemap
+                  data={treemapData}
+                  dataKey="size"
+                  aspectRatio={4 / 3}
+                  stroke="var(--color-card)"
+                  fill="var(--color-accent)"
+                  colorPanel={COLORS}
+                >
+                  <Tooltip contentStyle={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 8, color: 'var(--color-text)', fontSize: '0.8rem' }} />
+                </Treemap>
+              </ResponsiveContainer>
+            ) : <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>No recurring collaborators found.</div>}
           </div>
         </div>
 
@@ -263,6 +346,26 @@ export default function FacultyDashboard({ profile }) {
                 </div>
               )
             }) : <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>No publications available.</div>}
+          </div>
+        </div>
+
+        {/* Top Venues Bar Chart */}
+        <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem', gridColumn: '1 / -1' }}>
+          <h3 style={{ fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '0.5rem', fontWeight: 600 }}>Top Publishing Venues</h3>
+          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>Journals and conferences with the most publications.</p>
+          
+          <div style={{ width: '100%', height: 260 }}>
+            {topVenuesData.length > 0 ? (
+              <ResponsiveContainer>
+                <BarChart data={topVenuesData} layout="vertical" margin={{ top: 0, right: 30, left: 40, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
+                  <XAxis type="number" stroke="var(--color-border)" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis type="category" dataKey="name" width={200} stroke="var(--color-border)" tick={{ fill: 'var(--color-text)', fontSize: 10 }} tickLine={false} axisLine={false} />
+                  <Tooltip cursor={{ fill: 'rgba(128,128,128,0.05)' }} contentStyle={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 8, color: 'var(--color-text)', fontSize: '0.8rem' }} />
+                  <Bar dataKey="count" fill="#10b981" radius={[0, 4, 4, 0]} barSize={24} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>No venue data available.</div>}
           </div>
         </div>
 
