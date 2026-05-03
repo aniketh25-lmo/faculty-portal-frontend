@@ -94,7 +94,7 @@ export default function Header({ theme, onThemeToggle, onInfoClick, dbStatus, se
                   Desktop Tool
                 </div>
                 <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.6rem' }}>
-                  AcademicPulsePro <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#10b981', marginLeft: '0.3rem' }}>v4.0</span>
+                  AcademicPulsePro <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#10b981', marginLeft: '0.3rem' }}>v6.0</span>
                 </div>
                 <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
                   Run the scraper locally to pull publications from all sources and sync them to the cloud database.
