@@ -535,16 +535,11 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
                       .sort((a,b) => parseInt(a[0]) - parseInt(b[0]))
                       .map(([year, count]) => ({ year, papers: count }))
 
-                    const deptMap = {}
-                    globalAuthors.forEach(a => {
-                      if (a.department) {
-                        deptMap[a.department] = (deptMap[a.department] || 0) + 1
-                      }
-                    })
-                    const deptData = Object.entries(deptMap)
-                      .sort((a,b) => b[1] - a[1])
-                      .slice(0, 6)
-                      .map(([name, value]) => ({ name, value }))
+                    const citationSourceData = [
+                      { name: 'Google Scholar', value: totalScholarCites },
+                      { name: 'Scopus', value: totalScopusCites },
+                      { name: 'Web of Science', value: totalWosCites }
+                    ].filter(d => d.value > 0)
 
                     const venueMap = {}
                     globalPubs.forEach(p => {
@@ -609,15 +604,22 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
                             </div>
                           </div>
 
-                          {/* Departmental Contributions Donut */}
+                          {/* Citation Source Distribution Donut */}
                           <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.5rem' }}>
-                            <h3 style={{ fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '0.5rem', fontWeight: 600 }}>Departmental Distribution</h3>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>Total faculty profiles mapped by department.</p>
+                            <h3 style={{ fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '0.5rem', fontWeight: 600 }}>Total Citations by Database</h3>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>Distribution of aggregate citations across indexing platforms.</p>
                             <div style={{ width: '100%', height: 260 }}>
                               <ResponsiveContainer>
                                 <PieChart>
-                                  <Pie data={deptData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={3} dataKey="value" stroke="var(--color-card)">
-                                    {deptData.map((entry, index) => <Cell key={`cell-${index}`} fill={ADVANCED_COLORS[index % ADVANCED_COLORS.length]} />)}
+                                  <Pie data={citationSourceData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={3} dataKey="value" stroke="var(--color-card)">
+                                    {citationSourceData.map((entry, index) => {
+                                      const colorMap = {
+                                        'Google Scholar': '#3b82f6',
+                                        'Scopus': '#f97316',
+                                        'Web of Science': '#a855f7'
+                                      };
+                                      return <Cell key={`cell-${index}`} fill={colorMap[entry.name] || ADVANCED_COLORS[index % ADVANCED_COLORS.length]} />
+                                    })}
                                   </Pie>
                                   <Tooltip contentStyle={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 8, color: 'var(--color-text)', fontSize: '0.8rem' }} />
                                   <Legend wrapperStyle={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }} iconType="circle" />

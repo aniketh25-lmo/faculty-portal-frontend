@@ -1,4 +1,4 @@
-import { APP_NAME } from '../constants'
+import { APP_NAME, SCRAPER_URL } from '../constants'
 import { Link, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import NotificationsMenu from './NotificationsMenu'
@@ -69,7 +69,7 @@ export default function Header({ theme, onThemeToggle, onInfoClick, dbStatus, se
         {location.pathname !== '/' && (
           <div style={{ position: 'relative' }}>
             <a 
-              href="#" 
+              href={SCRAPER_URL} 
               style={{
                 display: 'flex', alignItems: 'center', gap: '0.4rem',
                 fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-bg)', 
