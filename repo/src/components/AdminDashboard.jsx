@@ -419,14 +419,15 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
           👁 View As Author
         </button>
 
+        <button onClick={() => setActiveTab('broadcast')} style={tabStyle('broadcast')}>
+          📢 Broadcast
+        </button>
+
         {/* Superadmin-only tabs */}
         {isSuperadmin && (
           <>
             <button onClick={() => setActiveTab('users')} style={tabStyle('users')}>
               👥 User Roles
-            </button>
-            <button onClick={() => setActiveTab('broadcast')} style={tabStyle('broadcast')}>
-              📢 Broadcast
             </button>
             <button onClick={() => setActiveTab('danger')} style={{
               ...tabStyle('danger'),
@@ -987,9 +988,9 @@ export default function AdminDashboard({ profile, isSuperadmin }) {
       )}
 
       {/* ══════════════════════════════════════════════════════════
-          TAB: Broadcast (Superadmin only)
+          TAB: Broadcast
       ══════════════════════════════════════════════════════════ */}
-      {activeTab === 'broadcast' && isSuperadmin && (
+      {activeTab === 'broadcast' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: 600 }}>
           <div style={{ marginBottom: '0.5rem' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.3rem' }}>System Broadcast</h3>
