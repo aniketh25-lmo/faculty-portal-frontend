@@ -80,8 +80,20 @@ export default function FacultyProfilePage({ profile, session }) {
 
     const [authorRes, detailsRes, claimRes] = await Promise.all([authorPromise, detailsPromise, claimPromise])
 
-    if (authorRes.data) setAuthorData(authorRes.data)
-    if (claimRes.data) setActiveClaim(claimRes.data)
+    // Only show research identity if an active/pending claim record still exists.
+    // If profile_claims was cleared externally, we suppress the banner and also
+    // null out the stale linked_author_id on the profiles row for consistency.
+    if (claimRes.data) {
+      setActiveClaim(claimRes.data)
+      if (authorRes.data) setAuthorData(authorRes.data)
+    } else if (profile.linked_author_id) {
+      // No claim record found — detach the stale link on profiles silently
+      await supabase
+        .from('profiles')
+        .update({ linked_author_id: null })
+        .eq('id', profile.id)
+      // authorData stays null → banner won't render
+    }
 
     const d = detailsRes.data || {}
     setDetails(d)
@@ -241,7 +253,8 @@ export default function FacultyProfilePage({ profile, session }) {
       )}
 
       {/* ── Research Identity Banner (read-only from master_authors) ── */}
-      {authorData && (
+      {/* Only render when both authorData AND an active claim exist */}
+      {authorData && activeClaim && (
         <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '2rem' }}>
           <p style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '1rem' }}>Research Identity — Synced from Database</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
@@ -286,7 +299,7 @@ export default function FacultyProfilePage({ profile, session }) {
       )}
 
       {/* ── Platform Links ── */}
-      {authorData && (
+      {authorData && activeClaim && (
         <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
           {authorData.scholar_id && (
             <a href={`https://scholar.google.com/citations?user=${authorData.scholar_id}`} target="_blank" rel="noopener noreferrer"

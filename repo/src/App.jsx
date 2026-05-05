@@ -54,6 +54,27 @@ export default function App() {
           throw error
         }
 
+        // If the profile still has a linked_author_id, verify that an active
+        // profile_claims record actually exists. If it was deleted externally,
+        // null out the stale link so the dashboard gate redirects correctly.
+        if (data?.linked_author_id) {
+          const { data: claimRow } = await supabase
+            .from('profile_claims')
+            .select('id')
+            .eq('profile_id', data.id)
+            .in('status', ['approved', 'detach_pending'])
+            .maybeSingle()
+
+          if (!claimRow) {
+            console.warn('No active claim found for linked_author_id — clearing stale link.')
+            await supabase
+              .from('profiles')
+              .update({ linked_author_id: null })
+              .eq('id', data.id)
+            data = { ...data, linked_author_id: null }
+          }
+        }
+
         setProfile(data || {})
       } catch (err) {
         console.error('Failed to fetch/create profile', err)
